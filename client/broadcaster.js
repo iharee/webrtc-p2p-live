@@ -132,13 +132,14 @@ class Broadcaster {
   }
 
   async onQualityChange({ quality, maxBitrate }) {
+    if (!this.pc) return;
     const videoSender = this.pc.getSenders().find(s => s.track && s.track.kind === 'video');
     if (!videoSender) return;
     const params = videoSender.getParameters();
     if (!params.encodings) params.encodings = [{}];
     if (quality === 'auto') {
       delete params.encodings[0].maxBitrate;
-      params.encodings[0].scaleResolutionDownBy = undefined;
+      delete params.encodings[0].scaleResolutionDownBy;
     } else if (quality === 'low') {
       params.encodings[0].maxBitrate = 1500000;
       params.encodings[0].scaleResolutionDownBy = 1.5;
