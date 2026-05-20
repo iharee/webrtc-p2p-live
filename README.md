@@ -4,6 +4,8 @@
 
 Single-room, 1v1, unidirectional WebRTC P2P live streaming demo.
 
+> A simple P2P screen sharing system built for watching LoveLive with friends.
+
 ## Local Development
 
 ```bash
