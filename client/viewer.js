@@ -111,7 +111,7 @@ class Viewer {
       this.pc = null;
     }
     if (this.signaling) {
-      this.signaling.ws.close();
+      try { this.signaling.ws.close(); } catch (_) { /* already closing/closed */ }
       this.signaling = null;
     }
     this.remoteVideo.srcObject = null;

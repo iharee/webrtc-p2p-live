@@ -201,7 +201,7 @@ class Broadcaster {
     const remoteAudio = document.getElementById('remoteAudio');
     if (remoteAudio) remoteAudio.srcObject = null;
     if (this.signaling) {
-      this.signaling.ws.close();
+      try { this.signaling.ws.close(); } catch (_) { /* already closing/closed */ }
       this.signaling = null;
     }
     this.localVideo.srcObject = null;
