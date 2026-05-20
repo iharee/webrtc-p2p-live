@@ -3,7 +3,12 @@ const WS_URL = location.protocol === 'https:'
   : 'ws://localhost:8080';
 
 const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' }
+  { urls: 'stun:stun.l.google.com:19302' },
+  {
+    urls: 'turn:YOUR_SERVER_IP:3478',
+    username: 'webrtc',
+    credential: 'YOUR_TURN_PASSWORD'
+  }
 ];
 
 const STATE = {
