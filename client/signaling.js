@@ -9,10 +9,6 @@ class SignalingClient extends EventTarget {
 
     this.ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
-      if (msg.type === 'ping') {
-        this.send({ type: 'pong' });
-        return;
-      }
       this.dispatchEvent(new CustomEvent(msg.type, { detail: msg }));
     };
 

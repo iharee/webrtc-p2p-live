@@ -49,7 +49,7 @@ class Broadcaster {
       this.signaling.addEventListener('ice-candidate', (e) => this.onIceCandidate(e.detail));
       this.signaling.addEventListener('peer-left', () => this.reset());
       this.signaling.addEventListener('error', () => this.reset());
-      this.signaling.addEventListener('close', (e) => this.onSignalingClose(e.detail));
+      this.signaling.addEventListener('close', () => this.reset());
     } catch (err) {
       alert('无法开始屏幕共享: ' + err.message);
       this.reset();
@@ -85,11 +85,6 @@ class Broadcaster {
   async onAnswer({ sdp }) {
     await this.pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
     await this.flushPendingCandidates();
-  }
-
-  onSignalingClose({ code, reason }) {
-    this.statusEl.textContent = `信令断开 (code=${code}) — 请重试`;
-    this.reset();
   }
 
   async onIceCandidate({ candidate }) {

@@ -65,10 +65,7 @@ class Viewer {
     this.signaling.addEventListener('ice-candidate', (e) => this.onIceCandidate(e.detail));
     this.signaling.addEventListener('peer-left', () => this.reset());
     this.signaling.addEventListener('error', () => this.reset());
-    this.signaling.addEventListener('close', (e) => {
-        this.statusEl.textContent = `信令断开 (code=${e.detail.code}) — 请重试`;
-        this.reset();
-      });
+    this.signaling.addEventListener('close', () => this.reset());
   }
 
   async onOffer({ sdp }) {

@@ -12,20 +12,6 @@ function send(ws, msg) {
   }
 }
 
-// Application-level keepalive: send a JSON ping every 5s to prevent
-// middleboxes/DPI firewalls from dropping idle WebSocket connections.
-// WebSocket control frames (ping/pong) can be blocked by DPI on some
-// campus networks, so we use regular data frames instead.
-const keepalive = setInterval(() => {
-  wss.clients.forEach((ws) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'ping' }));
-    }
-  });
-}, 5000);
-
-wss.on('close', () => clearInterval(keepalive));
-
 const log = (ip, msg) => console.log(`[${new Date().toISOString()}] [${ip}] ${msg}`);
 
 wss.on('connection', (ws, req) => {
@@ -60,8 +46,6 @@ wss.on('connection', (ws, req) => {
         } else if (ws === viewer && broadcaster) {
           send(broadcaster, msg);
         }
-        break;
-      case 'pong':
         break;
       default:
         console.warn('Unknown message type:', msg.type);
