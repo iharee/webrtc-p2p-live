@@ -1,7 +1,45 @@
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const WebSocket = require('ws');
 
 const PORT = process.env.PORT || 8080;
-const wss = new WebSocket.Server({ port: PORT });
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js':   'application/javascript; charset=utf-8',
+  '.css':  'text/css; charset=utf-8',
+};
+
+const CLIENT_DIR = path.join(__dirname, 'client');
+
+const server = http.createServer((req, res) => {
+  let urlPath = req.url.split('?')[0];
+  if (urlPath === '/') urlPath = '/broadcaster.html';
+
+  const filePath = path.join(CLIENT_DIR, urlPath);
+  if (!filePath.startsWith(CLIENT_DIR)) {
+    res.writeHead(403);
+    return res.end('Forbidden');
+  }
+
+  const ext = path.extname(filePath);
+  if (!MIME[ext]) {
+    res.writeHead(404);
+    return res.end('Not Found');
+  }
+
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.writeHead(404);
+      return res.end('Not Found');
+    }
+    res.writeHead(200, { 'Content-Type': MIME[ext] });
+    res.end(data);
+  });
+});
+
+const wss = new WebSocket.Server({ server });
 
 let broadcaster = null;
 let viewer = null;
@@ -88,4 +126,6 @@ function handleJoin(ws, role) {
   }
 }
 
-console.log(`Signaling server running on ws://localhost:${PORT}`);
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
