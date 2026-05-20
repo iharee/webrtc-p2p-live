@@ -12,7 +12,26 @@ function send(ws, msg) {
   }
 }
 
-wss.on('connection', (ws) => {
+// Heartbeat: send pings every 10s to keep idle connections alive
+// through middleboxes, NATs, and firewalls
+const heartbeat = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) return ws.terminate();
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 10000);
+
+wss.on('close', () => clearInterval(heartbeat));
+
+const log = (ip, msg) => console.log(`[${new Date().toISOString()}] [${ip}] ${msg}`);
+
+wss.on('connection', (ws, req) => {
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
+  log(ip, 'connected');
+
   ws.on('error', (err) => {
     console.error('WebSocket error:', err);
   });
@@ -47,7 +66,9 @@ wss.on('connection', (ws) => {
     }
   });
 
-  ws.on('close', () => {
+  ws.on('close', (code, reason) => {
+    const role = ws === broadcaster ? 'broadcaster' : ws === viewer ? 'viewer' : 'unknown';
+    log(ip, `disconnected (role=${role}, code=${code}, reason=${reason || 'none'})`);
     if (ws === broadcaster) {
       broadcaster = null;
       if (viewer) send(viewer, { type: 'peer-left' });

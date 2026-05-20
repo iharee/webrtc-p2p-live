@@ -12,8 +12,8 @@ class SignalingClient extends EventTarget {
       this.dispatchEvent(new CustomEvent(msg.type, { detail: msg }));
     };
 
-    this.ws.onclose = () => {
-      this.dispatchEvent(new Event('close'));
+    this.ws.onclose = (e) => {
+      this.dispatchEvent(new CustomEvent('close', { detail: { code: e.code, reason: e.reason } }));
     };
 
     this.ws.onerror = (err) => {
