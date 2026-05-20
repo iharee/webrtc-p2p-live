@@ -50,7 +50,7 @@ class Broadcaster {
 
     try {
       this.setState(STATE.PREVIEW);
-      this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      this.localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
       this.localVideo.srcObject = this.localStream;
 
       this.signaling = new SignalingClient(WS_URL);
@@ -63,7 +63,7 @@ class Broadcaster {
       this.signaling.addEventListener('error', () => this.reset());
       this.signaling.addEventListener('close', () => this.reset());
     } catch (err) {
-      alert('无法访问摄像头/麦克风: ' + err.message);
+      alert('无法开始屏幕共享: ' + err.message);
       this.reset();
     }
   }
