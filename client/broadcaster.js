@@ -163,7 +163,7 @@ class Broadcaster {
   }
 
   async onQualityChange({ quality, maxBitrate }) {
-    if (!this.pc) return;
+    if (!this.pc || !this.baselineBitrate) return;
     const videoSender = this.pc.getSenders().find(s => s.track && s.track.kind === 'video');
     if (!videoSender) return;
     const params = videoSender.getParameters();
