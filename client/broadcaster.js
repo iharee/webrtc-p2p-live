@@ -40,6 +40,9 @@ class Broadcaster {
     this.localStream = null;
     this.pendingCandidates = [];
     this.micStream = null;
+    this.captureWidth = null;
+    this.captureHeight = null;
+    this.baselineBitrate = null;
 
     this.statusEl = document.getElementById('status');
     this.localVideo = document.getElementById('localVideo');
