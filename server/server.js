@@ -126,6 +126,9 @@ function handleJoin(ws, role) {
     }
     broadcaster = ws;
     send(ws, { type: 'joined' });
+    if (viewer) {
+      send(broadcaster, { type: 'viewer-joined' });
+    }
   } else if (role === 'viewer') {
     if (viewer) {
       send(ws, { type: 'rejected', reason: 'viewer-exists' });

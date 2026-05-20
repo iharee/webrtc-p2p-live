@@ -85,7 +85,7 @@ class Broadcaster {
       this.signaling.addEventListener('viewer-joined', () => this.onViewerJoined());
       this.signaling.addEventListener('answer', (e) => this.onAnswer(e.detail));
       this.signaling.addEventListener('ice-candidate', (e) => this.onIceCandidate(e.detail));
-      this.signaling.addEventListener('peer-left', () => this.reset());
+      this.signaling.addEventListener('peer-left', () => this.onPeerLeft());
       this.signaling.addEventListener('error', () => this.reset());
       this.signaling.addEventListener('close', () => this.reset());
       this.signaling.addEventListener('quality-change', (e) => this.onQualityChange(e.detail));
@@ -95,7 +95,14 @@ class Broadcaster {
     }
   }
 
+  onPeerLeft() {
+    if (this.pc) { this.pc.close(); this.pc = null; }
+    this.pendingCandidates = [];
+    this.setState(STATE.WAITING_VIEWER);
+  }
+
   async onViewerJoined() {
+    if (this.pc) { this.pc.close(); }
     this.pc = new RTCPeerConnection({ iceServers: window.CONFIG.iceServers });
 
     this.localStream.getTracks().forEach(track => {
