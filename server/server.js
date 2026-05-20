@@ -89,6 +89,9 @@ wss.on('connection', (ws, req) => {
       case 'answer':
         if (ws === viewer && broadcaster) send(broadcaster, msg);
         break;
+      case 'quality-change':
+        if (ws === viewer && broadcaster) send(broadcaster, msg);
+        break;
       case 'ice-candidate':
         if (ws === broadcaster && viewer) {
           send(viewer, msg);
