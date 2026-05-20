@@ -6,6 +6,8 @@ Single-room, 1v1, unidirectional WebRTC P2P live streaming demo.
 
 > A simple P2P screen sharing system built for watching LoveLive with friends.
 
+**Browser:** Chrome is recommended. Edge has known issues with WebSocket from `file://`, and other browsers may not fully support `getDisplayMedia` for screen sharing.
+
 ## Local Development
 
 ```bash

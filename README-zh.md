@@ -6,6 +6,8 @@
 
 > 为和朋友一起看 LoveLive 而设计的简易 P2P 屏幕共享系统。
 
+**浏览器：** 推荐 Chrome。Edge 在 `file://` 下 WebSocket 有已知问题，其他浏览器可能不完全支持 `getDisplayMedia` 屏幕共享。
+
 ## 本地开发
 
 ```bash
