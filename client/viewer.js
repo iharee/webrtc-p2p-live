@@ -1,16 +1,3 @@
-const WS_URL = location.protocol === 'https:'
-  ? `wss://${location.host}/ws`
-  : 'ws://localhost:8080';
-
-const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  {
-    urls: 'turn:YOUR_SERVER_IP:3478',
-    username: 'webrtc',
-    credential: 'YOUR_TURN_PASSWORD'
-  }
-];
-
 const STATE = {
   IDLE: 'idle',
   WAITING_STREAM: 'waiting-stream',
@@ -47,7 +34,7 @@ class Viewer {
 
     this.setState(STATE.WAITING_STREAM);
 
-    this.pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    this.pc = new RTCPeerConnection({ iceServers: window.CONFIG.iceServers });
 
     this.pc.addTransceiver('video', { direction: 'recvonly' });
     this.pc.addTransceiver('audio', { direction: 'recvonly' });
@@ -72,7 +59,7 @@ class Viewer {
       }
     };
 
-    this.signaling = new SignalingClient(WS_URL);
+    this.signaling = new SignalingClient(window.CONFIG.wsUrl);
     this.signaling.addEventListener('open', () => this.signaling.join('viewer'));
     this.signaling.addEventListener('offer', (e) => this.onOffer(e.detail));
     this.signaling.addEventListener('ice-candidate', (e) => this.onIceCandidate(e.detail));
