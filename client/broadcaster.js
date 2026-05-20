@@ -170,10 +170,10 @@ class Broadcaster {
       params.encodings[0].scaleResolutionDownBy = 1.5;
     } else if (quality === 'high') {
       params.encodings[0].maxBitrate = 4000000;
-      params.encodings[0].scaleResolutionDownBy = undefined;
+      delete params.encodings[0].scaleResolutionDownBy;
     } else if (quality === 'custom' && maxBitrate) {
       params.encodings[0].maxBitrate = maxBitrate;
-      params.encodings[0].scaleResolutionDownBy = undefined;
+      delete params.encodings[0].scaleResolutionDownBy;
     }
     try { await videoSender.setParameters(params); } catch (e) { console.warn('setParameters failed:', e); }
   }

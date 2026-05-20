@@ -52,7 +52,7 @@ class Viewer {
         if (q === 'custom') {
           this.setQuality('custom');
           const v = parseInt(this.customBitrate.value);
-          if (v && v >= 1000 && v <= 20000) {
+          if (v && v >= 1000 && v <= 20000 && this.signaling && this.signaling.ws.readyState === WebSocket.OPEN) {
             this.signaling.send({ type: 'quality-change', quality: 'custom', maxBitrate: v * 1000 });
           }
         } else {
