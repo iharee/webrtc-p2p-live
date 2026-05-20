@@ -1,12 +1,12 @@
 [English](README.md)
 
-# P2P WebRTC 双端直播 Demo
+# P2P WebRTC 双端直播
 
-单房间、1v1、单向媒体流的 WebRTC P2P 直播 Demo。
+单房间、1v1、单向媒体流的简易 WebRTC P2P 直播系统。
 
-> 为和朋友一起看 LoveLive 而设计的简易 P2P 屏幕共享系统。
+> 是为和朋友一起看 LoveLive 而设计的！
 
-**浏览器：** 推荐 Chrome。Edge 在 `file://` 下 WebSocket 有已知问题，其他浏览器可能不完全支持 `getDisplayMedia` 屏幕共享。
+**浏览器：** 推荐 Chrome。其他浏览器可能存在未知问题，未经详细测试与验证。
 
 ## 本地开发
 
@@ -45,7 +45,7 @@ file:///path/to/client/broadcaster.html?server=<服务器IP>
 file:///path/to/client/viewer.html?server=<服务器IP>
 ```
 
-**注意：** `getDisplayMedia` 要求安全上下文（HTTPS 或 localhost/`file://`）。本地文件方式请使用 **Chrome**，Edge 对 `file://` 下 WebSocket 有限制。
+**注意：** `getDisplayMedia` 要求安全上下文（HTTPS 或 localhost/`file://`）。本地文件方式请使用 **Chrome**，其他浏览器可能不支持 `file://` 下的 WebSocket。
 
 ## HTTPS 与证书
 
@@ -102,7 +102,7 @@ npm test
 
 ## TURN 服务器部署
 
-大学校园网等对称 NAT 环境下 P2P 直连可能失败，必须部署 TURN relay。
+大学校园网等对称 NAT 环境下 P2P 直连可能失败，考虑部署 TURN relay。
 
 ### 安装 Coturn
 
@@ -110,7 +110,7 @@ npm test
 apt-get update && apt-get install -y coturn
 ```
 
-### 配置 `/etc/turnserver.conf`
+### 配置 `/etc/turnserver.conf`（参考[示例](coturn/turnserver.conf.example)）
 
 ```conf
 listening-port=3478
@@ -152,7 +152,7 @@ ufw allow 49152:65535/udp
 
 **常见陷阱：漏开 49152-65535/udp 会导致 ICE 状态 connected 但画面黑屏。**
 
-此外，云服务器（阿里云/腾讯云等）需要在**安全组**中额外开放以上端口，仅配置 UFW 不够。
+此外，云服务器（阿里云/腾讯云等）需要在**安全组**中额外开放以上端口，仅配置 UFW 是不够的。
 
 ### 验证 TURN
 
@@ -163,6 +163,8 @@ turnutils_uclient -t -u webrtc -w <密码> -p 3478 <公网IP>
 输出中出现 `relay` 地址即表示 TURN 正常工作。
 
 ## 信令服务器部署
+
+**前置条件：** 安装 [Node.js](https://nodejs.org/)（任意较新版本即可）。
 
 ### 文件结构
 
@@ -215,4 +217,4 @@ journalctl -u webrtc-server -f        # 实时日志
 systemctl restart webrtc-server       # 重启
 ```
 
-关闭旧进程时避免用 `pkill -f 'node server.js'`，会匹配自身 SSH 命令行。用 `ps aux | grep -E '[n]ode.*server\.js' | awk '{print $2}' | xargs kill`。
+Tip：关闭旧进程时避免用 `pkill -f 'node server.js'`，会匹配自身 SSH 命令行。用 `ps aux | grep -E '[n]ode.*server\.js' | awk '{print $2}' | xargs kill`。

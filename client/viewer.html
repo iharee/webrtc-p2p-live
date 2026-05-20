@@ -1,16 +1,25 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Viewer - WebRTC Live</title>
   <link rel="stylesheet" href="style.css">
+  <script>
+    const zh = (navigator.language || '').startsWith('zh');
+    document.documentElement.lang = zh ? 'zh-CN' : 'en';
+    document.title = zh ? '观众端 - WebRTC Live' : 'Viewer - WebRTC Live';
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('status').textContent = zh ? '准备就绪' : 'Ready';
+      document.getElementById('joinBtn').textContent = zh ? '加入直播' : 'Join Stream';
+    });
+  </script>
 </head>
 <body>
   <div class="container">
     <video id="remoteVideo" autoplay playsinline></video>
-    <div id="status" class="status">准备就绪</div>
-    <button id="joinBtn">加入观看</button>
+    <div id="status" class="status"></div>
+    <button id="joinBtn"></button>
   </div>
   <script src="config.js"></script>
   <script src="signaling.js"></script>

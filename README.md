@@ -1,12 +1,12 @@
-[中文](README-zh.md)
+[中文](README.zh-CN.md)
 
-# P2P WebRTC Live Streaming Demo
+# P2P WebRTC Live Streaming
 
-Single-room, 1v1, unidirectional WebRTC P2P live streaming demo.
+A simple 1v1 P2P screen sharing system using WebRTC.
 
-> A simple P2P screen sharing system built for watching LoveLive with friends.
+> Built for watching LoveLive with friends!
 
-**Browser:** Chrome is recommended. Edge has known issues with WebSocket from `file://`, and other browsers may not fully support `getDisplayMedia` for screen sharing.
+**Browser:** Chrome is recommended. Other browsers may have unknown issues and have not been thoroughly tested.
 
 ## Local Development
 
@@ -45,7 +45,7 @@ file:///path/to/client/broadcaster.html?server=<server-ip>
 file:///path/to/client/viewer.html?server=<server-ip>
 ```
 
-**Note:** `getDisplayMedia` requires a secure context (HTTPS, localhost, or `file://`). For local file access, use **Chrome** — Edge restricts WebSocket connections from `file://`.
+**Note:** `getDisplayMedia` requires a secure context (HTTPS, localhost, or `file://`). For local file access, use **Chrome** — other browsers may not support WebSocket from `file://`.
 
 ## HTTPS & Certificates
 
@@ -102,7 +102,7 @@ npm test
 
 ## TURN Server Deployment
 
-Symmetric NAT environments (e.g., university campus networks) often block direct P2P connections. A TURN relay is required for reliable media delivery.
+Symmetric NAT environments (e.g., university campus networks) often block direct P2P connections. Consider deploying a TURN relay.
 
 ### Install Coturn
 
@@ -110,7 +110,7 @@ Symmetric NAT environments (e.g., university campus networks) often block direct
 apt-get update && apt-get install -y coturn
 ```
 
-### Configure `/etc/turnserver.conf`
+### Configure `/etc/turnserver.conf` (see [example](coturn/turnserver.conf.example))
 
 ```conf
 listening-port=3478
@@ -164,6 +164,8 @@ A `relay` address in the output confirms TURN is working.
 
 ## Signaling Server Deployment
 
+**Prerequisites:** [Node.js](https://nodejs.org/) (any recent version).
+
 ### File Layout
 
 ```
@@ -215,4 +217,4 @@ journalctl -u webrtc-server -f        # Follow logs
 systemctl restart webrtc-server       # Restart
 ```
 
-When killing old processes, avoid `pkill -f 'node server.js'` — it matches the SSH command line itself. Use `ps aux | grep -E '[n]ode.*server\.js' | awk '{print $2}' | xargs kill` instead.
+Tip: when killing old processes, avoid `pkill -f 'node server.js'` — it matches the SSH command line itself. Use `ps aux | grep -E '[n]ode.*server\.js' | awk '{print $2}' | xargs kill` instead.
