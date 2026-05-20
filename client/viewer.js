@@ -1,3 +1,15 @@
+const L = (navigator.language || '').startsWith('zh') ? {
+  idle:          '准备就绪',
+  waitingStream: '等待主播推流...',
+  streaming:     '观看中',
+  joinBtn:       '加入直播',
+} : {
+  idle:          'Ready',
+  waitingStream: 'Waiting for broadcaster...',
+  streaming:     'Watching',
+  joinBtn:       'Join Stream',
+};
+
 const STATE = {
   IDLE: 'idle',
   WAITING_STREAM: 'waiting-stream',
@@ -14,6 +26,7 @@ class Viewer {
     this.statusEl = document.getElementById('status');
     this.remoteVideo = document.getElementById('remoteVideo');
     this.joinBtn = document.getElementById('joinBtn');
+    this.joinBtn.textContent = L.joinBtn;
 
     this.joinBtn.addEventListener('click', () => this.join());
   }
@@ -21,9 +34,9 @@ class Viewer {
   setState(s) {
     this.state = s;
     const map = {
-      [STATE.IDLE]: '准备就绪',
-      [STATE.WAITING_STREAM]: '等待主播推流...',
-      [STATE.STREAMING]: '观看中'
+      [STATE.IDLE]: L.idle,
+      [STATE.WAITING_STREAM]: L.waitingStream,
+      [STATE.STREAMING]: L.streaming
     };
     this.statusEl.textContent = map[s] || s;
   }

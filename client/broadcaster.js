@@ -1,4 +1,20 @@
 
+const L = (navigator.language || '').startsWith('zh') ? {
+  idle:            '准备就绪',
+  preview:         '准备中...',
+  waitingViewer:   '等待观众加入...',
+  streaming:       '直播中',
+  startBtn:        '开始直播',
+  errorScreenshare:'无法开始屏幕共享: ',
+} : {
+  idle:            'Ready',
+  preview:         'Preparing...',
+  waitingViewer:   'Waiting for viewer...',
+  streaming:       'Live',
+  startBtn:        'Start Streaming',
+  errorScreenshare:'Unable to start screen sharing: ',
+};
+
 const STATE = {
   IDLE: 'idle',
   PREVIEW: 'preview',
@@ -17,6 +33,7 @@ class Broadcaster {
     this.statusEl = document.getElementById('status');
     this.localVideo = document.getElementById('localVideo');
     this.startBtn = document.getElementById('startBtn');
+    this.startBtn.textContent = L.startBtn;
 
     this.startBtn.addEventListener('click', () => this.start());
   }
@@ -24,10 +41,10 @@ class Broadcaster {
   setState(s) {
     this.state = s;
     const map = {
-      [STATE.IDLE]: '准备就绪',
-      [STATE.PREVIEW]: '准备中...',
-      [STATE.WAITING_VIEWER]: '等待观众加入...',
-      [STATE.STREAMING]: '直播中'
+      [STATE.IDLE]: L.idle,
+      [STATE.PREVIEW]: L.preview,
+      [STATE.WAITING_VIEWER]: L.waitingViewer,
+      [STATE.STREAMING]: L.streaming
     };
     this.statusEl.textContent = map[s] || s;
   }
@@ -51,7 +68,7 @@ class Broadcaster {
       this.signaling.addEventListener('error', () => this.reset());
       this.signaling.addEventListener('close', () => this.reset());
     } catch (err) {
-      alert('无法开始屏幕共享: ' + err.message);
+      alert(L.errorScreenshare + err.message);
       this.reset();
     }
   }

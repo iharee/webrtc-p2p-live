@@ -1,8 +1,10 @@
-# P2P WebRTC 双端直播 Demo
+[中文](README-zh.md)
 
-单房间、1v1、单向媒体流的 WebRTC P2P 直播 Demo。
+# P2P WebRTC Live Streaming Demo
 
-## 本地开发
+Single-room, 1v1, unidirectional WebRTC P2P live streaming demo.
+
+## Local Development
 
 ```bash
 cd server
@@ -10,133 +12,133 @@ npm install
 npm start
 ```
 
-浏览器打开 `client/` 下的 HTML 文件：
+Open the HTML files under `client/` in a browser:
 
 - Broadcaster: `client/broadcaster.html`
 - Viewer: `client/viewer.html`
 
-本地开发无需查询参数，默认连 `localhost:8848`。Chrome 允许 `file://` 路径使用 `getDisplayMedia()`。
+No query parameters needed for local dev — defaults to `localhost:8848`. Chrome allows `getDisplayMedia()` from `file://`.
 
-## 两种访问方式
+## Two Access Methods
 
-### 方式一：远程 HTTPS（推荐）
+### Method 1: Remote HTTPS (Recommended)
 
-服务器提供静态页面和 WebSocket 信令，无需准备本地文件。主播和观众都只需打开对应 URL：
-
-```
-https://<服务器IP>:8848/                   # 主播端
-https://<服务器IP>:8848/viewer.html        # 观众端
-```
-
-`server` 和 `port` 参数会自动从页面 URL 提取，无需手动填写。
-
-### 方式二：本地文件
-
-HTML 文件保存在本地，通过 `file://` 协议打开。需通过查询参数指定远程服务器：
+The server serves static pages and WebSocket signaling — no local files needed. Both broadcaster and viewer just open a URL:
 
 ```
-file:///path/to/client/broadcaster.html?server=<服务器IP>
-file:///path/to/client/viewer.html?server=<服务器IP>
+https://<server-ip>:8848/                   # Broadcaster
+https://<server-ip>:8848/viewer.html        # Viewer
 ```
 
-**注意：** `getDisplayMedia` 要求安全上下文（HTTPS 或 localhost/`file://`）。本地文件方式请使用 **Chrome**，Edge 对 `file://` 下 WebSocket 有限制。
+`server` and `port` are auto-detected from the page URL. No manual configuration required.
 
-## HTTPS 与证书
+### Method 2: Local Files
 
-主播端使用 `getDisplayMedia` 进行屏幕共享，Chrome 要求安全上下文。服务器会自动检测 `cert.pem` / `key.pem`，存在则启用 HTTPS，否则退化为 HTTP（本地开发）。
+HTML files opened from disk via `file://`. Use query parameters to point to a remote server:
 
-### 生成自签名证书
+```
+file:///path/to/client/broadcaster.html?server=<server-ip>
+file:///path/to/client/viewer.html?server=<server-ip>
+```
+
+**Note:** `getDisplayMedia` requires a secure context (HTTPS, localhost, or `file://`). For local file access, use **Chrome** — Edge restricts WebSocket connections from `file://`.
+
+## HTTPS & Certificates
+
+The broadcaster uses `getDisplayMedia` for screen sharing, which requires a secure context in Chrome. The server auto-detects `cert.pem` / `key.pem` and enables HTTPS when present; otherwise it falls back to HTTP (local dev).
+
+### Generate a Self-Signed Certificate
 
 ```bash
 openssl req -x509 -newkey rsa:2048 \
   -keyout /root/webrtc-server/key.pem \
   -out /root/webrtc-server/cert.pem \
   -days 3650 -nodes \
-  -subj '/CN=<服务器IP>'
+  -subj '/CN=<server-ip>'
 ```
 
-### 浏览器证书提示
+### Browser Certificate Warning
 
-自签名证书不被浏览器信任，首次访问会提示"您的连接不是私密连接"。点击 **"高级" → "继续前往（不安全）"** 即可。每个浏览器只需操作一次。
+Self-signed certificates are not trusted by browsers. On first visit you'll see "Your connection is not private." Click **"Advanced" → "Proceed to (unsafe)"**. This is a one-time step per browser.
 
-观众端不依赖安全上下文，但使用 HTTPS 可以避免 WebSocket 被中间设备干扰。
+The viewer does not require a secure context, but HTTPS helps prevent middleboxes from interfering with the WebSocket connection.
 
-## URL 参数配置
+## URL Parameters
 
-支持通过 URL 查询参数覆盖配置：
+Optional overrides via query string:
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `server` | 自动检测 | 信令服务器地址（远程访问时自动从页面 URL 提取） |
-| `port` | 自动检测 | 信令服务器端口（同上） |
-| `turn` | — | TURN 服务器 IP（不填不启用 TURN） |
-| `turnUser` | — | TURN 用户名 |
-| `turnPass` | — | TURN 密码 |
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `server` | auto | Signaling server hostname/IP (auto-detected from page URL) |
+| `port` | auto | Signaling server port (auto-detected from page URL) |
+| `turn` | — | TURN server IP (TURN disabled if omitted) |
+| `turnUser` | — | TURN username |
+| `turnPass` | — | TURN password |
 
-### 使用示例
+### Examples
 
-使用示例 IP `203.0.113.1`，TURN 密码 `saki`：
+Using example IP `203.0.113.1` and TURN password `saki`:
 
 ```bash
-# 远程访问（HTTPS，server/port 自动检测）
+# Remote access (HTTPS — server/port auto-detected)
 https://203.0.113.1:8848/?turn=203.0.113.1&turnUser=webrtc&turnPass=saki
 https://203.0.113.1:8848/viewer.html?turn=203.0.113.1&turnUser=webrtc&turnPass=saki
 
-# 本地文件（需指定 server）
+# Local files (server parameter required)
 file:///.../broadcaster.html?server=203.0.113.1&turn=203.0.113.1&turnUser=webrtc&turnPass=saki
 file:///.../viewer.html?server=203.0.113.1&turn=203.0.113.1&turnUser=webrtc&turnPass=saki
 ```
 
-## 测试
+## Testing
 
 ```bash
 cd server
 npm test
 ```
 
-## TURN 服务器部署
+## TURN Server Deployment
 
-大学校园网等对称 NAT 环境下 P2P 直连可能失败，必须部署 TURN relay。
+Symmetric NAT environments (e.g., university campus networks) often block direct P2P connections. A TURN relay is required for reliable media delivery.
 
-### 安装 Coturn
+### Install Coturn
 
 ```bash
 apt-get update && apt-get install -y coturn
 ```
 
-### 配置 `/etc/turnserver.conf`
+### Configure `/etc/turnserver.conf`
 
 ```conf
 listening-port=3478
 tls-listening-port=5349
-listening-ip=<内网IP>       # 本机网卡 IP，如 eth0 地址
-relay-ip=<内网IP>           # 同上
-external-ip=<公网IP>        # 对外广播的公网 IP
-realm=<公网IP>
-server-name=<公网IP>
+listening-ip=<private-ip>    # NIC address, e.g. eth0
+relay-ip=<private-ip>        # Same as above
+external-ip=<public-ip>      # Public IP announced to peers
+realm=<public-ip>
+server-name=<public-ip>
 lt-cred-mech
-user=webrtc:<你的密码>
+user=webrtc:<your-password>
 total-quota=100
 bps-capacity=0
 stale-nonce
 no-loopback-peers
 ```
 
-**注意：云服务器需要区分 `listening-ip`（内网）和 `external-ip`（公网）。**
+**Note for cloud VMs:** `listening-ip` (private) and `external-ip` (public) must be set separately.
 
-### 启动
+### Start
 
 ```bash
 systemctl enable coturn && systemctl start coturn
 ```
 
-### 防火墙端口
+### Firewall Ports
 
-| 端口 | 协议 | 用途 |
-|------|------|------|
-| 3478 | TCP+UDP | STUN/TURN 信令 |
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 3478 | TCP+UDP | STUN/TURN signaling |
 | 5349 | TCP+UDP | TURN over TLS |
-| 49152-65535 | UDP | TURN relay 数据通道 |
+| 49152-65535 | UDP | TURN relay data channels |
 
 ```bash
 ufw allow 3478/tcp && ufw allow 3478/udp
@@ -144,27 +146,27 @@ ufw allow 5349/tcp && ufw allow 5349/udp
 ufw allow 49152:65535/udp
 ```
 
-**常见陷阱：漏开 49152-65535/udp 会导致 ICE 状态 connected 但画面黑屏。**
+**Common pitfall:** omitting `49152-65535/udp` causes ICE to show `connected` but media stays black.
 
-此外，云服务器（阿里云/腾讯云等）需要在**安全组**中额外开放以上端口，仅配置 UFW 不够。
+For cloud providers (Alibaba Cloud, AWS, etc.), you must additionally open these ports in the **security group**. UFW rules alone are not sufficient.
 
-### 验证 TURN
+### Verify TURN
 
 ```bash
-turnutils_uclient -t -u webrtc -w <密码> -p 3478 <公网IP>
+turnutils_uclient -t -u webrtc -w <password> -p 3478 <public-ip>
 ```
 
-输出中出现 `relay` 地址即表示 TURN 正常工作。
+A `relay` address in the output confirms TURN is working.
 
-## 信令服务器部署
+## Signaling Server Deployment
 
-### 文件结构
+### File Layout
 
 ```
 /root/webrtc-server/
-├── server.js          # 信令 + 静态文件服务
-├── cert.pem           # HTTPS 证书（可选，没有则 HTTP）
-├── key.pem            # HTTPS 私钥（可选）
+├── server.js          # Signaling + static file server
+├── cert.pem           # HTTPS certificate (optional — HTTP if absent)
+├── key.pem            # HTTPS private key (optional)
 ├── node_modules/
 └── client/
     ├── config.js
@@ -176,9 +178,9 @@ turnutils_uclient -t -u webrtc -w <密码> -p 3478 <公网IP>
     └── viewer.js
 ```
 
-### systemd 服务
+### systemd Service
 
-创建 `/etc/systemd/system/webrtc-server.service`：
+Create `/etc/systemd/system/webrtc-server.service`:
 
 ```ini
 [Unit]
@@ -201,12 +203,12 @@ systemctl daemon-reload
 systemctl enable --now webrtc-server
 ```
 
-常用命令：
+Common commands:
 
 ```bash
-systemctl status webrtc-server        # 查看状态
-journalctl -u webrtc-server -f        # 实时日志
-systemctl restart webrtc-server       # 重启
+systemctl status webrtc-server        # Check status
+journalctl -u webrtc-server -f        # Follow logs
+systemctl restart webrtc-server       # Restart
 ```
 
-关闭旧进程时避免用 `pkill -f 'node server.js'`，会匹配自身 SSH 命令行。用 `ps aux | grep -E '[n]ode.*server\.js' | awk '{print $2}' | xargs kill`。
+When killing old processes, avoid `pkill -f 'node server.js'` — it matches the SSH command line itself. Use `ps aux | grep -E '[n]ode.*server\.js' | awk '{print $2}' | xargs kill` instead.
