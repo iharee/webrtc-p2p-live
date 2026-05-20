@@ -50,11 +50,16 @@ class Viewer {
       btn.addEventListener('click', () => {
         const q = btn.dataset.quality;
         if (q === 'custom') {
-          const v = parseInt(this.customBitrate.value) * 1000;
-          if (!v || v < 1000000 || v > 20000000) return;
-          this.setQuality('custom', v);
+          this.setQuality('custom');
+          const v = parseInt(this.customBitrate.value);
+          if (v && v >= 1000 && v <= 20000) {
+            this.signaling.send({ type: 'quality-change', quality: 'custom', maxBitrate: v * 1000 });
+          }
         } else {
           this.setQuality(q);
+          if (this.signaling && this.signaling.ws.readyState === WebSocket.OPEN) {
+            this.signaling.send({ type: 'quality-change', quality: q });
+          }
         }
       });
     });
@@ -163,20 +168,11 @@ class Viewer {
     this.pendingCandidates = [];
   }
 
-  setQuality(quality, maxBitrate) {
+  setQuality(quality) {
     this.currentQuality = quality;
     this.qualityButtons.forEach(b => b.classList.remove('active'));
     this.qualityBar.querySelector(`[data-quality="${quality}"]`).classList.add('active');
-    if (quality === 'custom') {
-      this.customBitrate.disabled = false;
-    } else {
-      this.customBitrate.disabled = true;
-    }
-    if (this.signaling && this.signaling.ws.readyState === WebSocket.OPEN) {
-      const msg = { type: 'quality-change', quality };
-      if (quality === 'custom' && maxBitrate) msg.maxBitrate = maxBitrate;
-      this.signaling.send(msg);
-    }
+    this.customBitrate.disabled = (quality !== 'custom');
   }
 
   reset() {
