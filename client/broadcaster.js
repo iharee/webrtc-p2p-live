@@ -6,6 +6,10 @@ const L = (navigator.language || '').startsWith('zh') ? {
   streaming:       '直播中',
   startBtn:        '开始直播',
   errorScreenshare:'无法开始屏幕共享: ',
+  qualityAuto:  '自动',
+  qualityLow:   '标清',
+  qualityHigh:  '高清',
+  qualityCustom:'自定义',
 } : {
   idle:            'Ready',
   preview:         'Preparing...',
@@ -13,6 +17,10 @@ const L = (navigator.language || '').startsWith('zh') ? {
   streaming:       'Live',
   startBtn:        'Start Streaming',
   errorScreenshare:'Unable to start screen sharing: ',
+  qualityAuto:  'Auto',
+  qualityLow:   'Standard',
+  qualityHigh:  'High',
+  qualityCustom:'Custom',
 };
 
 const STATE = {
@@ -70,6 +78,7 @@ class Broadcaster {
       this.signaling.addEventListener('peer-left', () => this.reset());
       this.signaling.addEventListener('error', () => this.reset());
       this.signaling.addEventListener('close', () => this.reset());
+      this.signaling.addEventListener('quality-change', (e) => this.onQualityChange(e.detail));
     } catch (err) {
       alert(L.errorScreenshare + err.message);
       this.reset();
@@ -120,6 +129,27 @@ class Broadcaster {
     } else {
       this.pendingCandidates.push(candidate);
     }
+  }
+
+  async onQualityChange({ quality, maxBitrate }) {
+    const videoSender = this.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+    if (!videoSender) return;
+    const params = videoSender.getParameters();
+    if (!params.encodings) params.encodings = [{}];
+    if (quality === 'auto') {
+      delete params.encodings[0].maxBitrate;
+      params.encodings[0].scaleResolutionDownBy = undefined;
+    } else if (quality === 'low') {
+      params.encodings[0].maxBitrate = 1500000;
+      params.encodings[0].scaleResolutionDownBy = 1.5;
+    } else if (quality === 'high') {
+      params.encodings[0].maxBitrate = 4000000;
+      params.encodings[0].scaleResolutionDownBy = undefined;
+    } else if (quality === 'custom' && maxBitrate) {
+      params.encodings[0].maxBitrate = maxBitrate;
+      params.encodings[0].scaleResolutionDownBy = undefined;
+    }
+    try { await videoSender.setParameters(params); } catch (e) { console.warn('setParameters failed:', e); }
   }
 
   async flushPendingCandidates() {
