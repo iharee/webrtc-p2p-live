@@ -66,11 +66,14 @@ class Broadcaster {
 
     try {
       this.setState(STATE.PREVIEW);
-      this.localStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
-        audio: true
-      });
+      this.localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
       this.localVideo.srcObject = this.localStream;
+
+      const videoTrack = this.localStream.getVideoTracks()[0];
+      const settings = videoTrack.getSettings();
+      this.captureWidth = settings.width;
+      this.captureHeight = settings.height;
+      this.baselineBitrate = this.captureWidth * this.captureHeight * 2;
 
       try {
         this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -140,13 +143,6 @@ class Broadcaster {
 
     const offer = await this.pc.createOffer();
     await this.pc.setLocalDescription(offer);
-    const videoSender = this.pc.getSenders().find(s => s.track && s.track.kind === 'video');
-    if (videoSender) {
-      const params = videoSender.getParameters();
-      if (!params.encodings) params.encodings = [{}];
-      params.encodings[0].maxBitrate = 4000000;
-      try { await videoSender.setParameters(params); } catch (e) { console.warn('setParameters failed:', e); }
-    }
     this.signaling.sendOffer(offer.sdp);
   }
 
