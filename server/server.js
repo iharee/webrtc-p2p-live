@@ -12,7 +12,7 @@ function send(ws, msg) {
   }
 }
 
-const log = (ip, msg) => console.error(`[${new Date().toISOString()}] [${ip}] ${msg}`);
+const log = (ip, msg) => console.log(`[${new Date().toISOString()}] [${ip}] ${msg}`);
 
 wss.on('connection', (ws, req) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -48,7 +48,7 @@ wss.on('connection', (ws, req) => {
         }
         break;
       default:
-        console.error('Unknown message type:', msg.type);
+        console.warn('Unknown message type:', msg.type);
     }
   });
 
@@ -88,4 +88,4 @@ function handleJoin(ws, role) {
   }
 }
 
-console.error(`Signaling server running on ws://localhost:${PORT}`);
+console.log(`Signaling server running on ws://localhost:${PORT}`);
