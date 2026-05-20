@@ -12,24 +12,24 @@ function send(ws, msg) {
   }
 }
 
-// Heartbeat: send pings every 10s to keep idle connections alive
-// through middleboxes, NATs, and firewalls
-const heartbeat = setInterval(() => {
+// Application-level keepalive: send a JSON ping every 5s to prevent
+// middleboxes/DPI firewalls from dropping idle WebSocket connections.
+// WebSocket control frames (ping/pong) can be blocked by DPI on some
+// campus networks, so we use regular data frames instead.
+const keepalive = setInterval(() => {
   wss.clients.forEach((ws) => {
-    if (ws.isAlive === false) return ws.terminate();
-    ws.isAlive = false;
-    ws.ping();
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ping' }));
+    }
   });
-}, 10000);
+}, 5000);
 
-wss.on('close', () => clearInterval(heartbeat));
+wss.on('close', () => clearInterval(keepalive));
 
 const log = (ip, msg) => console.log(`[${new Date().toISOString()}] [${ip}] ${msg}`);
 
 wss.on('connection', (ws, req) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-  ws.isAlive = true;
-  ws.on('pong', () => { ws.isAlive = true; });
   log(ip, 'connected');
 
   ws.on('error', (err) => {
@@ -60,6 +60,8 @@ wss.on('connection', (ws, req) => {
         } else if (ws === viewer && broadcaster) {
           send(broadcaster, msg);
         }
+        break;
+      case 'pong':
         break;
       default:
         console.warn('Unknown message type:', msg.type);
