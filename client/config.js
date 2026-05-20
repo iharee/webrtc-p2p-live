@@ -1,9 +1,11 @@
-// Parse URL query parameters for runtime configuration
+// Parse URL query parameters for runtime configuration.
+// When served from the signaling server, server/port are auto-detected
+// from the page URL — no query params needed.
 const p = new URLSearchParams(location.search);
 
 const cfg = {
-  server:   p.get('server')   || 'localhost',
-  port:     p.get('port')     || '8848',
+  server:   p.get('server')   || location.hostname || 'localhost',
+  port:     p.get('port')     || location.port     || '8848',
   turn:     p.get('turn')     || null,
   turnUser: p.get('turnUser') || null,
   turnPass: p.get('turnPass') || null,
@@ -11,7 +13,7 @@ const cfg = {
 
 // Derive WebSocket signaling URL
 cfg.wsUrl = location.protocol === 'https:'
-  ? `wss://${cfg.server}/ws`
+  ? `wss://${cfg.server}:${cfg.port}`
   : `ws://${cfg.server}:${cfg.port}`;
 
 // Derive ICE server list; include TURN only if configured
