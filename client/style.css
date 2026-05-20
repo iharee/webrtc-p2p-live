@@ -56,3 +56,50 @@ button:disabled {
   background: #333;
   cursor: not-allowed;
 }
+
+.quality-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.quality-bar button {
+  padding: 6px 14px;
+  font-size: 13px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  color: #ccc;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.quality-bar button:hover {
+  background: rgba(255,255,255,0.16);
+  color: #fff;
+}
+
+.quality-bar button.active {
+  background: #0066ff;
+  border-color: #0066ff;
+  color: #fff;
+}
+
+.quality-bar input {
+  width: 80px;
+  padding: 6px 8px;
+  font-size: 13px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  color: #fff;
+  text-align: center;
+}
+
+.quality-bar input:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

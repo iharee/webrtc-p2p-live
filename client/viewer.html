@@ -18,7 +18,14 @@
 <body>
   <div class="container">
     <audio id="remoteAudio" autoplay playsinline hidden></audio>
-    <video id="remoteVideo" autoplay playsinline></video>
+    <div id="qualityBar" class="quality-bar" style="display:none">
+      <button data-quality="auto">Auto</button>
+      <button data-quality="low">Standard</button>
+      <button data-quality="high" class="active">High</button>
+      <input type="number" id="customBitrate" min="1000" max="20000" step="500" placeholder="kbps" disabled>
+      <button data-quality="custom" id="customBtn">Custom</button>
+    </div>
+    <video id="remoteVideo" autoplay playsinline controls></video>
     <div id="status" class="status"></div>
     <button id="joinBtn"></button>
   </div>

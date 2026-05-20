@@ -4,12 +4,20 @@ const L = (navigator.language || '').startsWith('zh') ? {
   streaming:     '观看中',
   joinBtn:       '加入直播',
   micError:      '麦克风权限被拒绝',
+  qualityAuto:   '自动',
+  qualityLow:    '标清',
+  qualityHigh:   '高清',
+  qualityCustom: '自定义',
 } : {
   idle:          'Ready',
   waitingStream: 'Waiting for broadcaster...',
   streaming:     'Watching',
   joinBtn:       'Join Stream',
   micError:      'Microphone access denied',
+  qualityAuto:   'Auto',
+  qualityLow:    'Standard',
+  qualityHigh:   'High',
+  qualityCustom: 'Custom',
 };
 
 const STATE = {
@@ -32,6 +40,35 @@ class Viewer {
     this.joinBtn.textContent = L.joinBtn;
 
     this.joinBtn.addEventListener('click', () => this.join());
+
+    this.qualityBar = document.getElementById('qualityBar');
+    this.qualityButtons = this.qualityBar.querySelectorAll('button[data-quality]');
+    this.customBitrate = document.getElementById('customBitrate');
+    this.currentQuality = 'high';
+
+    this.qualityButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const q = btn.dataset.quality;
+        if (q === 'custom') {
+          const v = parseInt(this.customBitrate.value) * 1000;
+          if (!v || v < 1000000 || v > 20000000) return;
+          this.setQuality('custom', v);
+        } else {
+          this.setQuality(q);
+        }
+      });
+    });
+
+    this.customBitrate.addEventListener('input', () => {
+      const v = parseInt(this.customBitrate.value);
+      document.getElementById('customBtn').disabled = !v || v < 1000 || v > 20000;
+    });
+
+    // Set initial button text from L
+    document.querySelector('[data-quality="auto"]').textContent = L.qualityAuto;
+    document.querySelector('[data-quality="low"]').textContent = L.qualityLow;
+    document.querySelector('[data-quality="high"]').textContent = L.qualityHigh;
+    document.getElementById('customBtn').textContent = L.qualityCustom;
   }
 
   setState(s) {
@@ -49,6 +86,7 @@ class Viewer {
     this.joinBtn.disabled = true;
 
     this.setState(STATE.WAITING_STREAM);
+    this.qualityBar.style.display = 'flex';
 
     try {
       this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -125,6 +163,22 @@ class Viewer {
     this.pendingCandidates = [];
   }
 
+  setQuality(quality, maxBitrate) {
+    this.currentQuality = quality;
+    this.qualityButtons.forEach(b => b.classList.remove('active'));
+    this.qualityBar.querySelector(`[data-quality="${quality}"]`).classList.add('active');
+    if (quality === 'custom') {
+      this.customBitrate.disabled = false;
+    } else {
+      this.customBitrate.disabled = true;
+    }
+    if (this.signaling && this.signaling.ws.readyState === WebSocket.OPEN) {
+      const msg = { type: 'quality-change', quality };
+      if (quality === 'custom' && maxBitrate) msg.maxBitrate = maxBitrate;
+      this.signaling.send(msg);
+    }
+  }
+
   reset() {
     if (this.pc) {
       this.pc.close();
@@ -142,6 +196,7 @@ class Viewer {
     this.pendingCandidates = [];
     this.setState(STATE.IDLE);
     this.joinBtn.disabled = false;
+    this.qualityBar.style.display = 'none';
   }
 }
 
