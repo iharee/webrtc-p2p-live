@@ -13,6 +13,10 @@ function send(ws, msg) {
 }
 
 wss.on('connection', (ws) => {
+  ws.on('error', (err) => {
+    console.error('WebSocket error:', err);
+  });
+
   ws.on('message', (raw) => {
     let msg;
     try {
@@ -26,10 +30,10 @@ wss.on('connection', (ws) => {
         handleJoin(ws, msg.role);
         break;
       case 'offer':
-        if (viewer) send(viewer, msg);
+        if (ws === broadcaster && viewer) send(viewer, msg);
         break;
       case 'answer':
-        if (broadcaster) send(broadcaster, msg);
+        if (ws === viewer && broadcaster) send(broadcaster, msg);
         break;
       case 'ice-candidate':
         if (ws === broadcaster && viewer) {
@@ -38,6 +42,8 @@ wss.on('connection', (ws) => {
           send(broadcaster, msg);
         }
         break;
+      default:
+        console.warn('Unknown message type:', msg.type);
     }
   });
 
