@@ -1,15 +1,3 @@
-const WS_URL = location.protocol === 'https:'
-  ? `wss://${location.host}/ws`
-  : 'ws://localhost:8080';
-
-const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  {
-    urls: 'turn:YOUR_SERVER_IP:3478',
-    username: 'webrtc',
-    credential: 'YOUR_TURN_PASSWORD'
-  }
-];
 
 const STATE = {
   IDLE: 'idle',
@@ -53,7 +41,7 @@ class Broadcaster {
       this.localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
       this.localVideo.srcObject = this.localStream;
 
-      this.signaling = new SignalingClient(WS_URL);
+      this.signaling = new SignalingClient(window.CONFIG.wsUrl);
       this.signaling.addEventListener('open', () => this.signaling.join('broadcaster'));
       this.signaling.addEventListener('joined', () => this.setState(STATE.WAITING_VIEWER));
       this.signaling.addEventListener('viewer-joined', () => this.onViewerJoined());
@@ -69,7 +57,7 @@ class Broadcaster {
   }
 
   async onViewerJoined() {
-    this.pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    this.pc = new RTCPeerConnection({ iceServers: window.CONFIG.iceServers });
 
     this.localStream.getTracks().forEach(track => {
       this.pc.addTrack(track, this.localStream);
