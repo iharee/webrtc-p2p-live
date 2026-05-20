@@ -3,7 +3,7 @@ const p = new URLSearchParams(location.search);
 
 const cfg = {
   server:   p.get('server')   || 'localhost',
-  port:     p.get('port')     || '8080',
+  port:     p.get('port')     || '8848',
   turn:     p.get('turn')     || null,
   turnUser: p.get('turnUser') || null,
   turnPass: p.get('turnPass') || null,
