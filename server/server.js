@@ -1,4 +1,3 @@
-const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
@@ -13,7 +12,19 @@ const MIME = {
 
 const CLIENT_DIR = path.join(__dirname, 'client');
 
-const server = http.createServer((req, res) => {
+// Use HTTPS if cert/key exist, otherwise plain HTTP (local dev)
+let isHttps = false;
+let server;
+const certPath = path.join(__dirname, 'cert.pem');
+const keyPath = path.join(__dirname, 'key.pem');
+if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+  isHttps = true;
+  server = require('https').createServer({ cert: fs.readFileSync(certPath), key: fs.readFileSync(keyPath) }, handleRequest);
+} else {
+  server = require('http').createServer(handleRequest);
+}
+
+function handleRequest(req, res) {
   let urlPath = req.url.split('?')[0];
   if (urlPath === '/') urlPath = '/broadcaster.html';
 
@@ -37,7 +48,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': MIME[ext] });
     res.end(data);
   });
-});
+}
 
 const wss = new WebSocket.Server({ server });
 
@@ -127,5 +138,6 @@ function handleJoin(ws, role) {
 }
 
 server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  const proto = isHttps ? 'https' : 'http';
+  console.log(`Server running on ${proto}://localhost:${PORT}`);
 });
