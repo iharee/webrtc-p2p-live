@@ -3,11 +3,13 @@ const L = (navigator.language || '').startsWith('zh') ? {
   waitingStream: '等待主播推流...',
   streaming:     '观看中',
   joinBtn:       '加入直播',
+  micError:      '麦克风权限被拒绝',
 } : {
   idle:          'Ready',
   waitingStream: 'Waiting for broadcaster...',
   streaming:     'Watching',
   joinBtn:       'Join Stream',
+  micError:      'Microphone access denied',
 };
 
 const STATE = {
@@ -22,6 +24,7 @@ class Viewer {
     this.signaling = null;
     this.pc = null;
     this.pendingCandidates = [];
+    this.micStream = null;
 
     this.statusEl = document.getElementById('status');
     this.remoteVideo = document.getElementById('remoteVideo');
@@ -47,13 +50,20 @@ class Viewer {
 
     this.setState(STATE.WAITING_STREAM);
 
+    try {
+      this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      console.warn(L.micError + ':', err.message);
+      this.micStream = null;
+    }
+
     this.pc = new RTCPeerConnection({ iceServers: window.CONFIG.iceServers });
 
     this.pc.addTransceiver('video', { direction: 'recvonly' });
-    this.pc.addTransceiver('audio', { direction: 'recvonly' });
+    this.pc.addTransceiver('audio', { direction: 'sendrecv' });
 
     this.pc.ontrack = (e) => {
-      if (e.streams && e.streams[0]) {
+      if (e.track.kind === 'video' && e.streams && e.streams[0]) {
         this.remoteVideo.srcObject = e.streams[0];
       }
     };
@@ -71,6 +81,12 @@ class Viewer {
         this.reset();
       }
     };
+
+    if (this.micStream) {
+      this.micStream.getTracks().forEach(track => {
+        this.pc.addTrack(track, this.micStream);
+      });
+    }
 
     this.signaling = new SignalingClient(window.CONFIG.wsUrl);
     this.signaling.addEventListener('open', () => this.signaling.join('viewer'));
@@ -115,6 +131,10 @@ class Viewer {
       this.signaling = null;
     }
     this.remoteVideo.srcObject = null;
+    if (this.micStream) {
+      this.micStream.getTracks().forEach(t => t.stop());
+      this.micStream = null;
+    }
     this.pendingCandidates = [];
     this.setState(STATE.IDLE);
     this.joinBtn.disabled = false;
