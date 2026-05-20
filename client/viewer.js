@@ -63,8 +63,12 @@ class Viewer {
     this.pc.addTransceiver('audio', { direction: 'sendrecv' });
 
     this.pc.ontrack = (e) => {
-      if (e.track.kind === 'video' && e.streams && e.streams[0]) {
+      if (!e.streams || !e.streams[0]) return;
+      if (e.track.kind === 'video') {
         this.remoteVideo.srcObject = e.streams[0];
+      } else if (e.track.kind === 'audio' && !e.streams[0].getVideoTracks().length) {
+        const remoteAudio = document.getElementById('remoteAudio');
+        if (remoteAudio) remoteAudio.srcObject = e.streams[0];
       }
     };
 
