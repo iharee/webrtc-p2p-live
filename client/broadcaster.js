@@ -6,6 +6,7 @@ const L = (navigator.language || '').startsWith('zh') ? {
   streaming:       '直播中',
   startBtn:        '开始直播',
   errorScreenshare:'无法开始屏幕共享: ',
+  micError: '麦克风权限被拒绝',
   qualityAuto:  '自动',
   qualityLow:   '标清',
   qualityHigh:  '高清',
@@ -17,6 +18,7 @@ const L = (navigator.language || '').startsWith('zh') ? {
   streaming:       'Live',
   startBtn:        'Start Streaming',
   errorScreenshare:'Unable to start screen sharing: ',
+  micError: 'Microphone access denied',
   qualityAuto:  'Auto',
   qualityLow:   'Standard',
   qualityHigh:  'High',
@@ -37,6 +39,7 @@ class Broadcaster {
     this.pc = null;
     this.localStream = null;
     this.pendingCandidates = [];
+    this.micStream = null;
 
     this.statusEl = document.getElementById('status');
     this.localVideo = document.getElementById('localVideo');
@@ -69,6 +72,13 @@ class Broadcaster {
       });
       this.localVideo.srcObject = this.localStream;
 
+      try {
+        this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        console.warn(L.micError + ':', err.message);
+        this.micStream = null;
+      }
+
       this.signaling = new SignalingClient(window.CONFIG.wsUrl);
       this.signaling.addEventListener('open', () => this.signaling.join('broadcaster'));
       this.signaling.addEventListener('joined', () => this.setState(STATE.WAITING_VIEWER));
@@ -92,9 +102,24 @@ class Broadcaster {
       this.pc.addTrack(track, this.localStream);
     });
 
+    if (this.micStream) {
+      this.micStream.getTracks().forEach(track => {
+        this.pc.addTrack(track, this.micStream);
+      });
+    }
+
     this.pc.onicecandidate = (e) => {
       if (e.candidate) {
         this.signaling.sendIceCandidate(e.candidate);
+      }
+    };
+
+    this.pc.ontrack = (e) => {
+      if (e.track.kind === 'audio') {
+        const remoteAudio = document.getElementById('remoteAudio');
+        if (e.streams && e.streams[0]) {
+          remoteAudio.srcObject = e.streams[0];
+        }
       }
     };
 
@@ -169,6 +194,12 @@ class Broadcaster {
       this.localStream.getTracks().forEach(t => t.stop());
       this.localStream = null;
     }
+    if (this.micStream) {
+      this.micStream.getTracks().forEach(t => t.stop());
+      this.micStream = null;
+    }
+    const remoteAudio = document.getElementById('remoteAudio');
+    if (remoteAudio) remoteAudio.srcObject = null;
     if (this.signaling) {
       this.signaling.ws.close();
       this.signaling = null;
