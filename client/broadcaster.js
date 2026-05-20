@@ -170,16 +170,12 @@ class Broadcaster {
     if (!params.encodings) params.encodings = [{}];
     if (quality === 'auto') {
       delete params.encodings[0].maxBitrate;
-      delete params.encodings[0].scaleResolutionDownBy;
-    } else if (quality === 'low') {
-      params.encodings[0].maxBitrate = 1500000;
-      params.encodings[0].scaleResolutionDownBy = 1.5;
     } else if (quality === 'high') {
-      params.encodings[0].maxBitrate = 4000000;
-      delete params.encodings[0].scaleResolutionDownBy;
+      params.encodings[0].maxBitrate = this.baselineBitrate;
+    } else if (quality === 'low') {
+      params.encodings[0].maxBitrate = Math.round(this.baselineBitrate * 0.5);
     } else if (quality === 'custom' && maxBitrate) {
       params.encodings[0].maxBitrate = maxBitrate;
-      delete params.encodings[0].scaleResolutionDownBy;
     }
     try { await videoSender.setParameters(params); } catch (e) { console.warn('setParameters failed:', e); }
   }
