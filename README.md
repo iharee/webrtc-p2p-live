@@ -2,7 +2,7 @@
 
 # P2P WebRTC Live Streaming
 
-A simple 1v1 P2P screen sharing system using WebRTC.
+A simple 1v1 P2P screen sharing and voice chat system using WebRTC.
 
 > Built for watching LoveLive with friends!
 
