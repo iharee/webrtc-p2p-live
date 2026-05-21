@@ -1,6 +1,6 @@
 const L = (navigator.language || '').startsWith('zh') ? {
   idle:            '准备就绪',
-  waitingStream:   '等待主播推流...',
+  waitingStream:   '等待推流端连接...',
   streaming:       '观看中',
   joinBtn:         '加入观看',
   micDenied:       '麦克风权限被拒绝，不影响观看',
@@ -11,7 +11,7 @@ const L = (navigator.language || '').startsWith('zh') ? {
   roomFull:        '房间已满，无法加入',
   badToken:        'Token 错误，请重试',
   needToken:       '请输入房间 Token',
-  broadcasterLeft: '主播已断开连接',
+  broadcasterLeft: '推流端已断开连接',
   connectionLost:  '连接断开',
   modalTitle:      '输入正确的房间 Token',
   confirmBtn:      '确认',
