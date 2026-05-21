@@ -4,7 +4,7 @@
 
 基于房间的 1v1 WebRTC P2P 实时流媒体系统，包含 Node.js 信令服务器与 broadcaster/viewer 浏览器端实现。
 
-> 是为和朋友一起看 LoveLive 而设计的！
+> 是为和亲友一起看 LoveLive 而设计的！
 
 **浏览器：**推荐 [Google Chrome](https://www.google.com/chrome/)。其他浏览器可能存在未知问题，未经详细的测试与验证。
 
