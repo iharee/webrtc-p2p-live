@@ -26,7 +26,18 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
 
 function handleRequest(req, res) {
   let urlPath = req.url.split('?')[0];
-  if (urlPath === '/') urlPath = '/broadcaster.html';
+
+  // / → broadcaster.html
+  // /live/*/viewer.html → viewer.html
+  // /live/* or any path without extension → broadcaster.html
+  // /style.css, /config.js etc → served as-is (root-relative)
+  if (urlPath === '/') {
+    urlPath = '/broadcaster.html';
+  } else if (urlPath.endsWith('/viewer.html')) {
+    urlPath = '/viewer.html';
+  } else if (!urlPath.includes('.')) {
+    urlPath = '/broadcaster.html';
+  }
 
   const filePath = path.join(CLIENT_DIR, urlPath);
   if (!filePath.startsWith(CLIENT_DIR)) {
