@@ -2,7 +2,7 @@
 
 # P2P WebRTC Live Streaming
 
-A room-based 1v1 WebRTC P2P screen sharing and bidirectional voice chat system.
+A room-based 1v1 WebRTC P2P real-time streaming system featuring a Node.js signaling server and browser-based broadcaster/viewer implementations.
 
 > Built for watching LoveLive with friends!
 

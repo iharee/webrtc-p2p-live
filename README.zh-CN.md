@@ -2,7 +2,7 @@
 
 # P2P WebRTC 双端直播
 
-基于房间的 1v1 WebRTC P2P 屏幕共享与双向语音聊天系统。
+基于房间的 1v1 WebRTC P2P 实时流媒体系统，包含 Node.js 信令服务器与 broadcaster/viewer 浏览器端实现。
 
 > 是为和朋友一起看 LoveLive 而设计的！
 
