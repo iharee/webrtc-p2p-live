@@ -103,3 +103,51 @@ button:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+.token-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.token-bar label {
+  font-size: 13px;
+  color: #888;
+}
+
+.token-bar input {
+  width: 140px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: monospace;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  color: #fff;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.token-bar input:read-only {
+  opacity: 0.7;
+  background: rgba(255,255,255,0.03);
+}
+
+.token-bar button {
+  padding: 6px 14px;
+  font-size: 13px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  color: #ccc;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.token-bar button:hover {
+  background: rgba(255,255,255,0.16);
+  color: #fff;
+}
