@@ -208,7 +208,6 @@ function handleJoin(ws, msg) {
       if (ws._pendingToken === room.token) {
         if (room.viewers.size >= MAX_VIEWERS) {
           send(ws, { type: 'rejected', reason: 'room-full' });
-          ws.role = null;
           return;
         }
         room.viewers.add(ws);
@@ -216,7 +215,6 @@ function handleJoin(ws, msg) {
         send(room.broadcaster, { type: 'viewer-joined' });
       } else if (ws._pendingToken && ws._pendingToken !== room.token) {
         send(ws, { type: 'rejected', reason: 'bad-token' });
-        ws.role = null;
         return;
       } else {
         room.pendingViewers.add(ws);
