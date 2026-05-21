@@ -49,7 +49,7 @@ class Viewer {
 
     this.tokenConfirmBtn.addEventListener('click', () => {
       const t = this.tokenInput.value.trim();
-      if (t.length === 12 && this.signaling) {
+      if (t.length > 0 && this.signaling) {
         this.tokenPrompt.style.display = 'none';
         this.signaling.auth(t);
       }
@@ -151,8 +151,8 @@ class Viewer {
 
     this.signaling = new SignalingClient(window.CONFIG.wsUrl);
     this.signaling.addEventListener('open', () => {
-  this.signaling.join('viewer', window.CONFIG.roomId, window.CONFIG.token);
-});
+      this.signaling.join('viewer', window.CONFIG.roomId, window.CONFIG.token);
+    });
     this.signaling.addEventListener('offer', (e) => this.onOffer(e.detail));
     this.signaling.addEventListener('ice-candidate', (e) => this.onIceCandidate(e.detail));
     this.signaling.addEventListener('peer-left', () => this.reset());
