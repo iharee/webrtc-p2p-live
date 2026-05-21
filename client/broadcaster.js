@@ -6,6 +6,7 @@ const L = (navigator.language || '').startsWith('zh') ? {
   streaming:       '推流中',
   startBtn:        '开始推流',
   errorScreenshare:'无法开始屏幕共享: ',
+  errorNoScreenApi: '当前浏览器不支持屏幕共享',
   micError: '麦克风权限被拒绝',
   qualityAuto:  '自动',
   qualityLow:   '标清',
@@ -18,6 +19,7 @@ const L = (navigator.language || '').startsWith('zh') ? {
   streaming:       'Live',
   startBtn:        'Start Streaming',
   errorScreenshare:'Unable to start screen sharing: ',
+  errorNoScreenApi: 'Screen sharing is not supported in this browser.',
   micError: 'Microphone access denied',
   qualityAuto:  'Auto',
   qualityLow:   'Standard',
@@ -100,6 +102,12 @@ class Broadcaster {
     this.startBtn.disabled = true;
     this.tokenInput.readOnly = true;
     this.tokenBtn.textContent = 'Copy';
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      alert(L.errorNoScreenApi);
+      this.reset();
+      return;
+    }
 
     try {
       this.setState(STATE.PREVIEW);
