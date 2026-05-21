@@ -8,6 +8,7 @@ const L = (navigator.language || '').startsWith('zh') ? {
   qualityLow:    '标清',
   qualityHigh:   '高清',
   qualityCustom: '自定义',
+  roomFull:      '房间已满',
 } : {
   idle:          'Ready',
   waitingStream: 'Waiting for broadcaster...',
@@ -18,6 +19,7 @@ const L = (navigator.language || '').startsWith('zh') ? {
   qualityLow:    'Standard',
   qualityHigh:   'High',
   qualityCustom: 'Custom',
+  roomFull:      'Room full',
 };
 
 const STATE = {
@@ -40,6 +42,18 @@ class Viewer {
     this.joinBtn.textContent = L.joinBtn;
 
     this.joinBtn.addEventListener('click', () => this.join());
+
+    this.tokenPrompt = document.getElementById('tokenPrompt');
+    this.tokenInput = document.getElementById('tokenInput');
+    this.tokenConfirmBtn = document.getElementById('tokenConfirmBtn');
+
+    this.tokenConfirmBtn.addEventListener('click', () => {
+      const t = this.tokenInput.value.trim();
+      if (t.length === 12 && this.signaling) {
+        this.tokenPrompt.style.display = 'none';
+        this.signaling.auth(t);
+      }
+    });
 
     this.qualityBar = document.getElementById('qualityBar');
     this.qualityButtons = this.qualityBar.querySelectorAll('button[data-quality]');
@@ -136,12 +150,30 @@ class Viewer {
     }
 
     this.signaling = new SignalingClient(window.CONFIG.wsUrl);
-    this.signaling.addEventListener('open', () => this.signaling.join('viewer'));
+    this.signaling.addEventListener('open', () => {
+  this.signaling.join('viewer', window.CONFIG.roomId, window.CONFIG.token);
+});
     this.signaling.addEventListener('offer', (e) => this.onOffer(e.detail));
     this.signaling.addEventListener('ice-candidate', (e) => this.onIceCandidate(e.detail));
     this.signaling.addEventListener('peer-left', () => this.reset());
     this.signaling.addEventListener('error', () => this.reset());
     this.signaling.addEventListener('close', () => this.reset());
+    this.signaling.addEventListener('broadcaster-joined', () => {
+      if (window.CONFIG.token) {
+        this.signaling.auth(window.CONFIG.token);
+      } else {
+        this.tokenPrompt.style.display = 'flex';
+      }
+    });
+    this.signaling.addEventListener('rejected', (e) => {
+      const reason = e.detail && e.detail.reason;
+      if (reason === 'bad-token') {
+        this.tokenPrompt.style.display = 'flex';
+        this.tokenInput.style.borderColor = '#ff4444';
+      } else if (reason === 'room-full') {
+        this.statusEl.textContent = L.roomFull;
+      }
+    });
   }
 
   async onOffer({ sdp }) {
@@ -193,6 +225,7 @@ class Viewer {
     this.setState(STATE.IDLE);
     this.joinBtn.disabled = false;
     this.qualityBar.style.display = 'none';
+    this.tokenPrompt.style.display = 'none';
   }
 }
 
