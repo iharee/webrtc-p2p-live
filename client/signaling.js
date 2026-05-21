@@ -21,8 +21,12 @@ class SignalingClient extends EventTarget {
     };
   }
 
-  join(role) {
-    this.send({ type: 'join', role });
+  join(role, roomId, token) {
+    this.send({ type: 'join', role, roomId, token });
+  }
+
+  auth(token) {
+    this.send({ type: 'auth', token });
   }
 
   sendOffer(sdp) {
