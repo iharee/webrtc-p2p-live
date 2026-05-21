@@ -5,24 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Viewer - WebRTC Live</title>
   <link rel="stylesheet" href="/style.css">
-  <script>
-    const zh = (navigator.language || '').startsWith('zh');
-    document.documentElement.lang = zh ? 'zh-CN' : 'en';
-    document.title = zh ? 'Viewer - WebRTC Live' : 'Viewer - WebRTC Live';
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('status').textContent = zh ? '准备就绪' : 'Ready';
-      document.getElementById('joinBtn').textContent = zh ? '加入观看' : 'Join Stream';
-    });
-  </script>
 </head>
 <body>
+  <div id="toastContainer"></div>
   <div class="container">
     <audio id="remoteAudio" autoplay playsinline hidden></audio>
-    <div id="tokenPrompt" class="token-bar" style="display:none">
-      <label>Token:</label>
-      <input type="text" id="tokenInput" maxlength="64" placeholder="Enter token to join">
-      <button id="tokenConfirmBtn">Join</button>
-    </div>
     <div id="qualityBar" class="quality-bar" style="display:none">
       <button data-quality="auto">Auto</button>
       <button data-quality="low">Standard</button>
@@ -32,7 +19,7 @@
     </div>
     <video id="remoteVideo" autoplay playsinline controls></video>
     <div id="status" class="status"></div>
-    <button id="joinBtn"></button>
+    <button id="joinBtn" class="btn-primary"></button>
   </div>
   <script src="/config.js"></script>
   <script src="/signaling.js"></script>

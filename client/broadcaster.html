@@ -5,27 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Broadcaster - WebRTC Live</title>
   <link rel="stylesheet" href="/style.css">
-  <script>
-    const zh = (navigator.language || '').startsWith('zh');
-    document.documentElement.lang = zh ? 'zh-CN' : 'en';
-    document.title = zh ? 'Broadcaster - WebRTC Live' : 'Broadcaster - WebRTC Live';
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('status').textContent = zh ? '准备就绪' : 'Ready';
-      document.getElementById('startBtn').textContent = zh ? '开始推流' : 'Start Streaming';
-    });
-  </script>
 </head>
 <body>
+  <div id="toastContainer"></div>
   <div class="container">
     <audio id="remoteAudio" autoplay playsinline hidden></audio>
     <div id="tokenBar" class="token-bar">
-      <label>Token:</label>
+      <label id="tokenLabel">Token</label>
       <input type="text" id="tokenInput" maxlength="64" placeholder="auto-generated">
-      <button id="tokenBtn">Save</button>
+      <button id="tokenBtn" class="btn-ghost">Save</button>
     </div>
     <video id="localVideo" autoplay playsinline muted controls></video>
     <div id="status" class="status"></div>
-    <button id="startBtn"></button>
+    <button id="startBtn" class="btn-primary"></button>
   </div>
   <script src="/config.js"></script>
   <script src="/signaling.js"></script>

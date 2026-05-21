@@ -1,30 +1,47 @@
-
 const L = (navigator.language || '').startsWith('zh') ? {
-  idle:            '准备就绪',
-  preview:         '准备中...',
-  waitingViewer:   '等待观众加入...',
-  streaming:       '推流中',
-  startBtn:        '开始推流',
-  errorScreenshare:'无法开始屏幕共享: ',
-  errorNoScreenApi: '当前浏览器不支持屏幕共享',
-  micError: '麦克风权限被拒绝',
-  qualityAuto:  '自动',
-  qualityLow:   '标清',
-  qualityHigh:  '高清',
-  qualityCustom:'自定义',
+  idle:              '准备就绪',
+  preview:           '准备中...',
+  waitingViewer:     '等待观众加入...',
+  streaming:         '推流中',
+  startBtn:          '开始推流',
+  tokenLabel:        'Token',
+  saveBtn:           '保存',
+  copyBtn:           '复制',
+  copied:            '已复制',
+  tokenSaved:        'Token 已保存',
+  tokenCopied:       'Token 已复制到剪贴板',
+  modalTitle:        '房间 Token',
+  modalHint:         '将此 Token 分享给观众即可加入观看',
+  modalDone:         '完成',
+  errorScreenshare:  '无法开始屏幕共享: ',
+  errorNoScreenApi:  '当前浏览器不支持屏幕共享',
+  errorScreenDenied: '屏幕共享权限被拒绝',
+  micDenied:         '麦克风权限被拒绝，不影响推流',
+  viewerJoined:      '观众已加入',
+  viewerLeft:        '观众已离开',
+  connectionLost:    '连接断开',
 } : {
-  idle:            'Ready',
-  preview:         'Preparing...',
-  waitingViewer:   'Waiting for viewer...',
-  streaming:       'Live',
-  startBtn:        'Start Streaming',
-  errorScreenshare:'Unable to start screen sharing: ',
-  errorNoScreenApi: 'Screen sharing is not supported in this browser.',
-  micError: 'Microphone access denied',
-  qualityAuto:  'Auto',
-  qualityLow:   'Standard',
-  qualityHigh:  'High',
-  qualityCustom:'Custom',
+  idle:              'Ready',
+  preview:           'Preparing...',
+  waitingViewer:     'Waiting for viewer...',
+  streaming:         'Live',
+  startBtn:          'Start Streaming',
+  tokenLabel:        'Token',
+  saveBtn:           'Save',
+  copyBtn:           'Copy',
+  copied:            'Copied',
+  tokenSaved:        'Token saved',
+  tokenCopied:       'Token copied to clipboard',
+  modalTitle:        'Room Token',
+  modalHint:         'Share this token — viewers need it to join',
+  modalDone:         'Done',
+  errorScreenshare:  'Unable to start screen sharing: ',
+  errorNoScreenApi:  'Screen sharing is not supported in this browser',
+  errorScreenDenied: 'Screen sharing permission was denied',
+  micDenied:         'Microphone access denied — streaming unaffected',
+  viewerJoined:      'Viewer joined',
+  viewerLeft:        'Viewer left',
+  connectionLost:    'Connection lost',
 };
 
 const STATE = {
@@ -33,6 +50,20 @@ const STATE = {
   WAITING_VIEWER: 'waiting-viewer',
   STREAMING: 'streaming'
 };
+
+function showToast(msg, type) {
+  type = type || 'info';
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(function () {
+    el.classList.add('toast-out');
+    el.addEventListener('animationend', function () { el.remove(); });
+  }, 3500);
+}
 
 class Broadcaster {
   constructor() {
@@ -46,35 +77,33 @@ class Broadcaster {
     this.captureHeight = null;
     this.baselineBitrate = null;
 
-    this.statusEl = document.getElementById('status');
+    this.statusEl   = document.getElementById('status');
     this.localVideo = document.getElementById('localVideo');
-    this.startBtn = document.getElementById('startBtn');
+    this.startBtn   = document.getElementById('startBtn');
+    this.startBtn.className = 'btn-primary';
     this.startBtn.textContent = L.startBtn;
+
+    document.getElementById('tokenLabel').textContent = L.tokenLabel;
 
     this.startBtn.addEventListener('click', () => this.start());
 
     this.tokenInput = document.getElementById('tokenInput');
-    this.tokenBtn = document.getElementById('tokenBtn');
-
-    // Generate initial random 12-char token
+    this.tokenBtn   = document.getElementById('tokenBtn');
+    this.tokenBtn.textContent = L.saveBtn;
     this.tokenInput.value = this.generateToken();
 
     this.tokenBtn.addEventListener('click', () => {
       if (this.state !== STATE.IDLE) {
-        navigator.clipboard.writeText(this.tokenInput.value).catch(() => {});
+        navigator.clipboard.writeText(this.tokenInput.value).then(
+          () => showToast(L.tokenCopied, 'success'),
+          () => {}
+        );
       } else {
-        const btn = this.tokenBtn;
-        const origText = btn.textContent;
-        btn.textContent = 'Saved';
-        btn.style.background = '#22aa44';
-        btn.style.borderColor = '#22aa44';
-        btn.style.color = '#fff';
-        setTimeout(() => {
-          btn.textContent = origText;
-          btn.style.background = '';
-          btn.style.borderColor = '';
-          btn.style.color = '';
-        }, 600);
+        const token = this.tokenInput.value.trim();
+        if (token) {
+          this.tokenInput.value = token;
+          showToast(L.tokenSaved, 'success');
+        }
       }
     });
   }
@@ -97,14 +126,53 @@ class Broadcaster {
     this.statusEl.textContent = map[s] || s;
   }
 
+  /** Show a centered modal with the room token (read-only + copy). */
+  showTokenModal(token) {
+    // Remove any existing modal
+    const prev = document.querySelector('.modal-overlay');
+    if (prev) prev.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-card">' +
+        '<h2>' + L.modalTitle + '</h2>' +
+        '<p>' + L.modalHint + '</p>' +
+        '<input type="text" readonly value="' + token.replace(/"/g, '&quot;') + '" style="font-size:18px;letter-spacing:3px">' +
+        '<div class="modal-actions">' +
+          '<button class="btn-ghost" id="modalCopyBtn">' + L.copyBtn + '</button>' +
+          '<button class="btn-primary" id="modalDoneBtn">' + L.modalDone + '</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#modalDoneBtn').addEventListener('click', () => this.hideModal(overlay));
+    overlay.querySelector('#modalCopyBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(token).then(
+        () => showToast(L.tokenCopied, 'success'),
+        () => {}
+      );
+    });
+    overlay.querySelector('input').addEventListener('click', function () { this.select(); });
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) overlay.querySelector('#modalDoneBtn').click();
+    });
+  }
+
+  hideModal(overlay) {
+    overlay.classList.add('modal-out');
+    overlay.addEventListener('animationend', function () { overlay.remove(); });
+  }
+
   async start() {
     if (this.state !== STATE.IDLE) return;
     this.startBtn.disabled = true;
     this.tokenInput.readOnly = true;
-    this.tokenBtn.textContent = 'Copy';
+    this.tokenBtn.textContent = L.copyBtn;
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-      alert(L.errorNoScreenApi);
+      showToast(L.errorNoScreenApi, 'error');
       this.reset();
       return;
     }
@@ -123,7 +191,8 @@ class Broadcaster {
       try {
         this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       } catch (err) {
-        console.warn(L.micError + ':', err.message);
+        console.warn(L.micDenied + ':', err.message);
+        showToast(L.micDenied, 'warning');
         this.micStream = null;
       }
 
@@ -132,20 +201,34 @@ class Broadcaster {
       const token = this.tokenInput.value;
       this.signaling.addEventListener('open', () => this.signaling.join('broadcaster', roomId, token));
       this.signaling.addEventListener('joined', (e) => {
-        if (e.detail && e.detail.token && e.detail.token !== this.tokenInput.value) {
-          this.tokenInput.value = e.detail.token;
+        const serverToken = e.detail && e.detail.token;
+        if (serverToken && serverToken !== this.tokenInput.value) {
+          this.tokenInput.value = serverToken;
         }
         this.setState(STATE.WAITING_VIEWER);
+        this.showTokenModal(serverToken || this.tokenInput.value);
       });
-      this.signaling.addEventListener('viewer-joined', () => this.onViewerJoined());
+      this.signaling.addEventListener('viewer-joined', () => {
+        showToast(L.viewerJoined, 'success');
+        this.onViewerJoined();
+      });
       this.signaling.addEventListener('answer', (e) => this.onAnswer(e.detail));
       this.signaling.addEventListener('ice-candidate', (e) => this.onIceCandidate(e.detail));
-      this.signaling.addEventListener('peer-left', () => this.onPeerLeft());
-      this.signaling.addEventListener('error', () => this.reset());
+      this.signaling.addEventListener('peer-left', () => {
+        showToast(L.viewerLeft, 'warning');
+        this.onPeerLeft();
+      });
+      this.signaling.addEventListener('error', () => {
+        showToast(L.connectionLost, 'error');
+        this.reset();
+      });
       this.signaling.addEventListener('close', () => this.reset());
       this.signaling.addEventListener('quality-change', (e) => this.onQualityChange(e.detail));
     } catch (err) {
-      alert(L.errorScreenshare + err.message);
+      const msg = err && err.name === 'NotAllowedError'
+        ? L.errorScreenDenied
+        : L.errorScreenshare + (err ? err.message : '');
+      showToast(msg, 'error');
       this.reset();
     }
   }
@@ -171,17 +254,13 @@ class Broadcaster {
     }
 
     this.pc.onicecandidate = (e) => {
-      if (e.candidate) {
-        this.signaling.sendIceCandidate(e.candidate);
-      }
+      if (e.candidate) this.signaling.sendIceCandidate(e.candidate);
     };
 
     this.pc.ontrack = (e) => {
       if (e.track.kind === 'audio') {
         const remoteAudio = document.getElementById('remoteAudio');
-        if (e.streams && e.streams[0]) {
-          remoteAudio.srcObject = e.streams[0];
-        }
+        if (e.streams && e.streams[0]) remoteAudio.srcObject = e.streams[0];
       }
     };
 
@@ -237,18 +316,9 @@ class Broadcaster {
   }
 
   reset() {
-    if (this.pc) {
-      this.pc.close();
-      this.pc = null;
-    }
-    if (this.localStream) {
-      this.localStream.getTracks().forEach(t => t.stop());
-      this.localStream = null;
-    }
-    if (this.micStream) {
-      this.micStream.getTracks().forEach(t => t.stop());
-      this.micStream = null;
-    }
+    if (this.pc) { this.pc.close(); this.pc = null; }
+    if (this.localStream) { this.localStream.getTracks().forEach(t => t.stop()); this.localStream = null; }
+    if (this.micStream) { this.micStream.getTracks().forEach(t => t.stop()); this.micStream = null; }
     const remoteAudio = document.getElementById('remoteAudio');
     if (remoteAudio) remoteAudio.srcObject = null;
     if (this.signaling) {
@@ -260,7 +330,7 @@ class Broadcaster {
     this.setState(STATE.IDLE);
     this.startBtn.disabled = false;
     this.tokenInput.readOnly = false;
-    this.tokenBtn.textContent = 'Save';
+    this.tokenBtn.textContent = L.saveBtn;
   }
 }
 
