@@ -17,7 +17,9 @@
       <input type="number" id="customBitrate" min="1000" max="20000" step="500" placeholder="kbps" disabled>
       <button data-quality="custom" id="customBtn">Custom</button>
     </div>
-    <video id="remoteVideo" autoplay playsinline controls></video>
+    <div class="video-shell">
+      <video id="remoteVideo" autoplay playsinline controls></video>
+    </div>
     <div id="status" class="status"></div>
     <button id="joinBtn" class="btn-primary"></button>
   </div>
