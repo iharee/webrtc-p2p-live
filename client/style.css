@@ -37,7 +37,10 @@
 html { height: 100%; }
 
 body {
-  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  font-family: "Segoe UI", -apple-system, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   background:
     radial-gradient(ellipse 70% 60% at 15% 85%, rgba(74,94,181,0.04) 0%, transparent 60%),
     radial-gradient(ellipse 60% 70% at 85% 15%, rgba(232,112,90,0.05) 0%, transparent 60%),
@@ -344,10 +347,10 @@ input::placeholder { color: var(--ink-light); opacity: 0.5; }
 }
 
 .modal-card h2 {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 22px;
-  font-weight: 400;
-  margin-bottom: 8px;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
   color: var(--ink);
   letter-spacing: -0.01em;
 }

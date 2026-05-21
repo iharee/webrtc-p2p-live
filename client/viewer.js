@@ -13,8 +13,7 @@ const L = (navigator.language || '').startsWith('zh') ? {
   needToken:       '请输入房间 Token',
   broadcasterLeft: '主播已断开连接',
   connectionLost:  '连接断开',
-  modalTitle:      '输入房间 Token',
-  modalHint:       '请向主播索取房间 Token',
+  modalTitle:      '输入正确的房间 Token',
   confirmBtn:      '确认',
   cancelBtn:       '取消',
 } : {
@@ -32,8 +31,7 @@ const L = (navigator.language || '').startsWith('zh') ? {
   needToken:       'Enter the room token to join',
   broadcasterLeft: 'Broadcaster disconnected',
   connectionLost:  'Connection lost',
-  modalTitle:      'Enter Room Token',
-  modalHint:       'Ask the broadcaster for the room token',
+  modalTitle:      'Enter the correct room token',
   confirmBtn:      'Confirm',
   cancelBtn:       'Cancel',
 };
@@ -131,7 +129,6 @@ class Viewer {
       overlay.innerHTML =
         '<div class="modal-card">' +
           '<h2>' + L.modalTitle + '</h2>' +
-          '<p>' + L.modalHint + '</p>' +
           '<input type="text" id="modalTokenInput" maxlength="64" placeholder="Token" autofocus>' +
           '<div class="modal-actions">' +
             '<button class="btn-ghost" id="modalCancelBtn">' + L.cancelBtn + '</button>' +
