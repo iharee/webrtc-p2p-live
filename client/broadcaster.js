@@ -138,7 +138,7 @@ class Broadcaster {
       '<div class="modal-card">' +
         '<h2>' + L.modalTitle + '</h2>' +
         '<p>' + L.modalHint + '</p>' +
-        '<input type="text" readonly value="' + token.replace(/"/g, '&quot;') + '" style="font-size:18px;letter-spacing:3px">' +
+        '<input type="text" readonly value="' + token.replace(/"/g, '&quot;') + '">' +
         '<div class="modal-actions">' +
           '<button class="btn-ghost" id="modalCopyBtn">' + L.copyBtn + '</button>' +
           '<button class="btn-primary" id="modalDoneBtn">' + L.modalDone + '</button>' +

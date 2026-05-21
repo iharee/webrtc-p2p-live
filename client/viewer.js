@@ -132,7 +132,7 @@ class Viewer {
         '<div class="modal-card">' +
           '<h2>' + L.modalTitle + '</h2>' +
           '<p>' + L.modalHint + '</p>' +
-          '<input type="text" id="modalTokenInput" maxlength="64" placeholder="Token" style="font-size:18px;letter-spacing:3px" autofocus>' +
+          '<input type="text" id="modalTokenInput" maxlength="64" placeholder="Token" autofocus>' +
           '<div class="modal-actions">' +
             '<button class="btn-ghost" id="modalCancelBtn">' + L.cancelBtn + '</button>' +
             '<button class="btn-primary" id="modalConfirmBtn">' + L.confirmBtn + '</button>' +
