@@ -29,7 +29,11 @@ cfg.iceServers = [
 ];
 if (cfg.turn) {
   cfg.iceServers.push({
-    urls:       `turn:${cfg.turn}:3478`,
+    urls: [
+      `turn:${cfg.turn}:3478`,                    // UDP (fastest)
+      `turn:${cfg.turn}:3478?transport=tcp`,      // TCP fallback
+      `turns:${cfg.turn}:5349`,                   // TLS fallback (hardest to block)
+    ],
     username:   cfg.turnUser,
     credential: cfg.turnPass,
   });
