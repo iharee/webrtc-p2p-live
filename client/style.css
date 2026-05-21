@@ -103,8 +103,7 @@ video {
   max-width: 640px;
   background: #1a1a22;
   border-radius: var(--radius);
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
+  object-fit: contain;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
 }
 
