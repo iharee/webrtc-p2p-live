@@ -50,6 +50,25 @@ class Broadcaster {
     this.startBtn.textContent = L.startBtn;
 
     this.startBtn.addEventListener('click', () => this.start());
+
+    this.tokenInput = document.getElementById('tokenInput');
+    this.tokenBtn = document.getElementById('tokenBtn');
+
+    // Generate initial random 12-char token
+    this.tokenInput.value = this.generateToken();
+
+    this.tokenBtn.addEventListener('click', () => {
+      if (this.state !== STATE.IDLE) {
+        navigator.clipboard.writeText(this.tokenInput.value).catch(() => {});
+      }
+    });
+  }
+
+  generateToken() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let t = '';
+    for (let i = 0; i < 12; i++) t += chars[Math.floor(Math.random() * chars.length)];
+    return t;
   }
 
   setState(s) {
@@ -66,6 +85,8 @@ class Broadcaster {
   async start() {
     if (this.state !== STATE.IDLE) return;
     this.startBtn.disabled = true;
+    this.tokenInput.readOnly = true;
+    this.tokenBtn.textContent = 'Copy';
 
     try {
       this.setState(STATE.PREVIEW);
@@ -86,8 +107,15 @@ class Broadcaster {
       }
 
       this.signaling = new SignalingClient(window.CONFIG.wsUrl);
-      this.signaling.addEventListener('open', () => this.signaling.join('broadcaster'));
-      this.signaling.addEventListener('joined', () => this.setState(STATE.WAITING_VIEWER));
+      const roomId = window.CONFIG.roomId;
+      const token = this.tokenInput.value;
+      this.signaling.addEventListener('open', () => this.signaling.join('broadcaster', roomId, token));
+      this.signaling.addEventListener('joined', (e) => {
+        if (e.detail && e.detail.token && e.detail.token !== this.tokenInput.value) {
+          this.tokenInput.value = e.detail.token;
+        }
+        this.setState(STATE.WAITING_VIEWER);
+      });
       this.signaling.addEventListener('viewer-joined', () => this.onViewerJoined());
       this.signaling.addEventListener('answer', (e) => this.onAnswer(e.detail));
       this.signaling.addEventListener('ice-candidate', (e) => this.onIceCandidate(e.detail));
@@ -210,6 +238,8 @@ class Broadcaster {
     this.pendingCandidates = [];
     this.setState(STATE.IDLE);
     this.startBtn.disabled = false;
+    this.tokenInput.readOnly = false;
+    this.tokenBtn.textContent = 'Save';
   }
 }
 
