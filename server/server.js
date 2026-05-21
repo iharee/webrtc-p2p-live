@@ -63,8 +63,10 @@ function handleRequest(req, res) {
 
 const wss = new WebSocket.Server({ server });
 
-let broadcaster = null;
-let viewer = null;
+const MAX_VIEWERS = 1;
+const TOKEN_LENGTH = 12;
+
+const rooms = new Map();  // roomId → { token, broadcaster, viewers Set<ws>, pendingViewers Set<ws> }
 
 function send(ws, msg) {
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -77,6 +79,9 @@ const log = (ip, msg) => console.log(`[${new Date().toISOString()}] [${ip}] ${ms
 wss.on('connection', (ws, req) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   log(ip, 'connected');
+
+  ws.roomId = null;
+  ws.role = null;
 
   ws.on('error', (err) => {
     console.error('WebSocket error:', err);
@@ -92,22 +97,38 @@ wss.on('connection', (ws, req) => {
 
     switch (msg.type) {
       case 'join':
-        handleJoin(ws, msg.role);
+        handleJoin(ws, msg);
+        break;
+      case 'auth':
+        handleAuth(ws, msg.token);
         break;
       case 'offer':
-        if (ws === broadcaster && viewer) send(viewer, msg);
+        if (ws.role === 'broadcaster') {
+          const room = rooms.get(ws.roomId);
+          if (room) room.viewers.forEach(v => send(v, msg));
+        }
         break;
       case 'answer':
-        if (ws === viewer && broadcaster) send(broadcaster, msg);
+        if (ws.role === 'viewer') {
+          const room = rooms.get(ws.roomId);
+          if (room && room.broadcaster) send(room.broadcaster, msg);
+        }
         break;
       case 'quality-change':
-        if (ws === viewer && broadcaster) send(broadcaster, msg);
+        if (ws.role === 'viewer') {
+          const room = rooms.get(ws.roomId);
+          if (room && room.broadcaster) send(room.broadcaster, msg);
+        }
         break;
       case 'ice-candidate':
-        if (ws === broadcaster && viewer) {
-          send(viewer, msg);
-        } else if (ws === viewer && broadcaster) {
-          send(broadcaster, msg);
+        {
+          const room = rooms.get(ws.roomId);
+          if (!room) break;
+          if (ws.role === 'broadcaster') {
+            room.viewers.forEach(v => send(v, msg));
+          } else if (ws.role === 'viewer' && room.broadcaster) {
+            send(room.broadcaster, msg);
+          }
         }
         break;
       default:
@@ -115,42 +136,126 @@ wss.on('connection', (ws, req) => {
     }
   });
 
-  ws.on('close', (code, reason) => {
-    const role = ws === broadcaster ? 'broadcaster' : ws === viewer ? 'viewer' : 'unknown';
-    log(ip, `disconnected (role=${role}, code=${code}, reason=${reason || 'none'})`);
-    if (ws === broadcaster) {
-      broadcaster = null;
-      if (viewer) send(viewer, { type: 'peer-left' });
-    } else if (ws === viewer) {
-      viewer = null;
-      if (broadcaster) send(broadcaster, { type: 'peer-left' });
+  ws.on('close', (code) => {
+    log(ip, `disconnected (role=${ws.role}, room=${ws.roomId}, code=${code})`);
+
+    if (!ws.roomId) return;
+    const room = rooms.get(ws.roomId);
+    if (!room) return;
+
+    if (ws.role === 'broadcaster') {
+      room.broadcaster = null;
+      room.viewers.forEach(v => send(v, { type: 'peer-left' }));
+      room.pendingViewers.forEach(v => send(v, { type: 'peer-left' }));
+    } else if (ws.role === 'viewer') {
+      room.viewers.delete(ws);
+      room.pendingViewers.delete(ws);
+      if (room.broadcaster) send(room.broadcaster, { type: 'peer-left' });
+    }
+
+    // Clean up room if empty
+    if (!room.broadcaster && room.viewers.size === 0 && room.pendingViewers.size === 0) {
+      rooms.delete(ws.roomId);
     }
   });
 });
 
-function handleJoin(ws, role) {
+function handleJoin(ws, msg) {
+  const { role, roomId, token } = msg;
+  if (!roomId || !role) {
+    send(ws, { type: 'rejected', reason: 'missing-roomId-or-role' });
+    return;
+  }
+
+  let room = rooms.get(roomId);
+  if (!room) {
+    room = { token: null, broadcaster: null, viewers: new Set(), pendingViewers: new Set() };
+    rooms.set(roomId, room);
+  }
+
+  ws.roomId = roomId;
+  ws.role = role;
+
   if (role === 'broadcaster') {
-    if (broadcaster) {
+    if (room.broadcaster) {
       send(ws, { type: 'rejected', reason: 'broadcaster-exists' });
-      ws.close();
       return;
     }
-    broadcaster = ws;
-    send(ws, { type: 'joined' });
-    if (viewer) {
-      send(broadcaster, { type: 'viewer-joined' });
+    room.token = token || generateToken();
+    room.broadcaster = ws;
+    send(ws, { type: 'joined', token: room.token });
+
+    // Process pending viewers — first with matching token wins
+    for (const vw of room.pendingViewers) {
+      if (room.viewers.size >= MAX_VIEWERS) break;
+      const vToken = vw._pendingToken;
+      if (vToken && vToken === room.token) {
+        room.pendingViewers.delete(vw);
+        room.viewers.add(vw);
+        send(vw, { type: 'joined' });
+        send(ws, { type: 'viewer-joined' });
+      }
     }
+
+    // Notify remaining pending viewers that broadcaster is here
+    room.pendingViewers.forEach(vw => {
+      send(vw, { type: 'broadcaster-joined' });
+    });
   } else if (role === 'viewer') {
-    if (viewer) {
-      send(ws, { type: 'rejected', reason: 'viewer-exists' });
-      ws.close();
+    ws._pendingToken = token || null;
+
+    if (room.broadcaster && room.token) {
+      if (ws._pendingToken === room.token) {
+        if (room.viewers.size >= MAX_VIEWERS) {
+          send(ws, { type: 'rejected', reason: 'room-full' });
+          ws.role = null;
+          return;
+        }
+        room.viewers.add(ws);
+        send(ws, { type: 'joined' });
+        send(room.broadcaster, { type: 'viewer-joined' });
+      } else if (ws._pendingToken && ws._pendingToken !== room.token) {
+        send(ws, { type: 'rejected', reason: 'bad-token' });
+        ws.role = null;
+        return;
+      } else {
+        room.pendingViewers.add(ws);
+        send(ws, { type: 'broadcaster-joined' });
+      }
+    } else {
+      room.pendingViewers.add(ws);
+      send(ws, { type: 'joined' });
+    }
+  }
+}
+
+function generateToken() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < TOKEN_LENGTH; i++) {
+    token += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return token;
+}
+
+function handleAuth(ws, token) {
+  if (ws.role !== 'viewer') return;
+  const room = rooms.get(ws.roomId);
+  if (!room || !room.token) return;
+
+  if (token === room.token) {
+    if (room.viewers.size >= MAX_VIEWERS) {
+      send(ws, { type: 'rejected', reason: 'room-full' });
       return;
     }
-    viewer = ws;
+    room.pendingViewers.delete(ws);
+    room.viewers.add(ws);
     send(ws, { type: 'joined' });
-    if (broadcaster) {
-      send(broadcaster, { type: 'viewer-joined' });
+    if (room.broadcaster) {
+      send(room.broadcaster, { type: 'viewer-joined' });
     }
+  } else {
+    send(ws, { type: 'rejected', reason: 'bad-token' });
   }
 }
 
