@@ -2,7 +2,7 @@ const L = (navigator.language || '').startsWith('zh') ? {
   idle:          '准备就绪',
   waitingStream: '等待主播推流...',
   streaming:     '观看中',
-  joinBtn:       '加入直播',
+  joinBtn:       '加入观看',
   micError:      '麦克风权限被拒绝',
   qualityAuto:   '自动',
   qualityLow:    '标清',
