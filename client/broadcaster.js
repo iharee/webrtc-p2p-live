@@ -60,6 +60,19 @@ class Broadcaster {
     this.tokenBtn.addEventListener('click', () => {
       if (this.state !== STATE.IDLE) {
         navigator.clipboard.writeText(this.tokenInput.value).catch(() => {});
+      } else {
+        const btn = this.tokenBtn;
+        const origText = btn.textContent;
+        btn.textContent = 'Saved';
+        btn.style.background = '#22aa44';
+        btn.style.borderColor = '#22aa44';
+        btn.style.color = '#fff';
+        setTimeout(() => {
+          btn.textContent = origText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 600);
       }
     });
   }

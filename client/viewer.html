@@ -8,7 +8,7 @@
   <script>
     const zh = (navigator.language || '').startsWith('zh');
     document.documentElement.lang = zh ? 'zh-CN' : 'en';
-    document.title = zh ? '观众端 - WebRTC Live' : 'Viewer - WebRTC Live';
+    document.title = zh ? 'Viewer - WebRTC Live' : 'Viewer - WebRTC Live';
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('status').textContent = zh ? '准备就绪' : 'Ready';
       document.getElementById('joinBtn').textContent = zh ? '加入观看' : 'Join Stream';

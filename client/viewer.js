@@ -51,6 +51,7 @@ class Viewer {
       const t = this.tokenInput.value.trim();
       if (t.length > 0 && this.signaling) {
         this.tokenPrompt.style.display = 'none';
+        this.tokenPrompt.classList.remove('fade-in');
         this.signaling.auth(t);
       }
     });
@@ -163,12 +164,17 @@ class Viewer {
         this.signaling.auth(window.CONFIG.token);
       } else {
         this.tokenPrompt.style.display = 'flex';
+        void this.tokenPrompt.offsetWidth;
+        this.tokenPrompt.classList.add('fade-in');
       }
     });
     this.signaling.addEventListener('rejected', (e) => {
       const reason = e.detail && e.detail.reason;
       if (reason === 'bad-token') {
         this.tokenPrompt.style.display = 'flex';
+        this.tokenPrompt.classList.remove('fade-in');
+        void this.tokenPrompt.offsetWidth;
+        this.tokenPrompt.classList.add('fade-in');
         this.tokenInput.style.borderColor = '#ff4444';
       } else if (reason === 'room-full') {
         this.statusEl.textContent = L.roomFull;
@@ -226,6 +232,7 @@ class Viewer {
     this.joinBtn.disabled = false;
     this.qualityBar.style.display = 'none';
     this.tokenPrompt.style.display = 'none';
+    this.tokenPrompt.classList.remove('fade-in');
   }
 }
 
