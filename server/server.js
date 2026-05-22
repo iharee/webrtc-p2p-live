@@ -163,9 +163,14 @@ wss.on('connection', (ws, req) => {
 });
 
 function handleJoin(ws, msg) {
-  const { role, roomId, token } = msg;
+  const { role, roomId } = msg;
+  const token = normalizeToken(msg.token);
   if (!roomId || !role) {
     send(ws, { type: 'rejected', reason: 'missing-roomId-or-role' });
+    return;
+  }
+  if (token && !isValidToken(token)) {
+    send(ws, { type: 'rejected', reason: 'bad-token' });
     return;
   }
 
@@ -226,8 +231,22 @@ function generateToken() {
   return token;
 }
 
+function normalizeToken(t) {
+  if (typeof t !== 'string') return '';
+  return t.trim().toLowerCase();
+}
+
+function isValidToken(t) {
+  return /^[a-z0-9]{1,64}$/.test(t);
+}
+
 function handleAuth(ws, token) {
+  token = normalizeToken(token);
   if (ws.role !== 'viewer') return;
+  if (token && !isValidToken(token)) {
+    send(ws, { type: 'rejected', reason: 'bad-token' });
+    return;
+  }
   const room = rooms.get(ws.roomId);
   if (!room || !room.token) return;
 

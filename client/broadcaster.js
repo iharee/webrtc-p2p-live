@@ -99,8 +99,10 @@ class Broadcaster {
           () => {}
         );
       } else {
-        const token = this.tokenInput.value.trim();
-        if (token) {
+        const token = this.tokenInput.value.trim().toLowerCase();
+        if (token && !/^[a-z0-9]{1,64}$/.test(token)) {
+          showToast('Invalid token — a-z, 0-9 only', 'error');
+        } else if (token) {
           this.tokenInput.value = token;
           showToast(L.tokenSaved, 'success');
         }
@@ -167,6 +169,13 @@ class Broadcaster {
 
   async start() {
     if (this.state !== STATE.IDLE) return;
+
+    const rawToken = this.tokenInput.value.trim().toLowerCase();
+    if (rawToken && !/^[a-z0-9]{1,64}$/.test(rawToken)) {
+      showToast('Invalid token — a-z, 0-9 only', 'error');
+      return;
+    }
+
     this.startBtn.disabled = true;
     this.tokenInput.readOnly = true;
     this.tokenBtn.textContent = L.copyBtn;
@@ -198,7 +207,7 @@ class Broadcaster {
 
       this.signaling = new SignalingClient(window.CONFIG.wsUrl);
       const roomId = window.CONFIG.roomId;
-      const token = this.tokenInput.value;
+      const token = this.tokenInput.value.trim().toLowerCase();
       this.signaling.addEventListener('open', () => this.signaling.join('broadcaster', roomId, token));
       this.signaling.addEventListener('joined', (e) => {
         const serverToken = e.detail && e.detail.token;

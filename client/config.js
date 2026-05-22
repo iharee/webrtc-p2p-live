@@ -8,6 +8,11 @@ const parts = location.pathname.replace(/^\/+|\/+$/g, '').split('/');
 const roomIdx = parts.indexOf('live');
 const roomId = (roomIdx !== -1 && parts[roomIdx + 1]) ? parts[roomIdx + 1] : 'default';
 
+const rawToken = p.get('token');
+const token = rawToken && /^[a-z0-9]{1,64}$/i.test(rawToken.trim())
+  ? rawToken.trim().toLowerCase()
+  : null;
+
 const cfg = {
   server:   p.get('server')   || location.hostname || 'localhost',
   port:     p.get('port')     || location.port     || '8848',
@@ -15,7 +20,7 @@ const cfg = {
   turnUser: p.get('turnUser') || null,
   turnPass: p.get('turnPass') || null,
   roomId:   roomId,
-  token:    p.get('token')    || null,
+  token:    token,
 };
 
 // Derive WebSocket signaling URL
