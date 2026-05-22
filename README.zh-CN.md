@@ -193,22 +193,22 @@ turn:<TURN_HOST>:3478?transport=tcp      # TCP 回退（更难被阻断）
 turns:<TURN_HOST>:5349                   # TLS 回退（需有效证书）
 ```
 
-用户打开页面即可连接，无需手动拼 URL、凭据不会暴露在链接中、分享也干净。
+用户打开页面即可连接，无需拼接 URL。
 
 本地开发或需要使用自定义 TURN 服务器时，仍可通过 `?turn=` / `?turnUser=` / `?turnPass=` 查询参数覆盖。
 
-### 为什么这个很重要
+### 必要性
 
-仅依赖单一公共 STUN 服务器（如 `stun.l.google.com`）在真实网络环境中是不够的：
+仅依赖单一公共 STUN 服务器（如 `stun.l.google.com`）在真实的复杂网络环境中是不够稳健的：
 
-| 场景 | Google STUN | TURN relay |
+| 网络环境 | Google STUN | TURN relay |
 |------|-------------|------------|
-| 海外家用宽带 | 通常可达 | 不需要（NAT 较宽松） |
-| 中国大陆校园网 | 经常被屏蔽或限流 | **必须** |
-| 中国大陆运营商 CGNAT | 可能间歇性失败 | **强烈建议** |
+| 典型家用宽带 | 通常可达 | 不需要（NAT 较宽松） |
+| 受限网络环境（校园网、企业内网） | 经常被屏蔽或限流 | **必须** |
+| 运营商级 NAT (CGNAT) | 可能间歇性失败 | **强烈建议** |
 | 企业防火墙 | 通常被屏蔽 | **必须** |
 
-**常见故障模式：**Google STUN 在中国大陆被屏蔽或 QOS 限速，ICE 无法收集 `srflx` candidate，又没有 TURN —— 连接静默失败。多 STUN 来源 + 默认 TURN relay 可以消除这一单点风险。
+**常见故障模式：**Google STUN 在受限网络环境中常被屏蔽或限速，ICE 无法收集 `srflx` candidate，若此时无 TURN 支持 —— 连接可能静默失败。多 STUN 来源 + 默认 TURN relay 可以消除这一单点风险。
 
 ### 安装 Coturn
 
@@ -247,7 +247,7 @@ no-loopback-peers
 
 ### TURNS 的 TLS 证书
 
-**自签名证书无法用于浏览器的 TURNS 连接。**Chrome、Android WebView 及原生 WebRTC 栈对 TURN 的 TLS 校验非常严格 —— 浏览器页面的"继续前往（不安全）"例外仅适用于页面自身，不会扩展至 TURN TLS 层。
+**自签名证书无法用于浏览器的 TURNS 连接。**Chrome、Android WebView 及原生 WebRTC 栈对 TURN 的 TLS 校验非常严格 —— 浏览器页面的「继续前往（不安全）」例外仅适用于页面自身，不会扩展至 TURN TLS 层。
 
 生产环境建议配置域名并通过 Let's Encrypt 获取正式证书：
 
@@ -309,15 +309,6 @@ journalctl -u coturn -f
 3. **无 `relay` candidate？**TURN 未配置或不可达 — 检查服务端环境变量和 coturn 运行状态
 4. **无 `srflx` candidate？**STUN 不可达 — `config.js` 中的多 STUN 列表会提供回退
 5. **`turns:` candidate 持续超时？**确认证书来自受信任 CA（非自签名）
-
-**常见陷阱：**
-
-| 现象 | 可能原因 |
-|------|----------|
-| ICE 显示 `connected` 但画面黑屏 | `49152-65535/udp` 未在防火墙或安全组中开放 |
-| 始终无 relay candidate | `TURN_HOST` 环境变量未设；coturn 未运行；防火墙阻断 3478 |
-| `turns:` candidate 无法收集 | `turnserver.conf` 使用了自签名证书 → 浏览器拒绝 TLS |
-| 大陆 viewer 连不上 | Google STUN 被屏蔽 + 无 TURN 兜底 → 配好 TURN 环境变量 |
 
 ## 信令服务器部署
 

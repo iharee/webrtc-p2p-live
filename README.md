@@ -193,22 +193,22 @@ turn:<TURN_HOST>:3478?transport=tcp      # TCP fallback (harder to block)
 turns:<TURN_HOST>:5349                   # TLS fallback (requires valid cert)
 ```
 
-Users just open the page and connect. No manual URL construction, no exposed credentials in the link, no confusion.
+Users just open the page and connect — no manual URL construction needed.
 
 For local development or custom TURN servers, `?turn=` / `?turnUser=` / `?turnPass=` query parameters still work as overrides.
 
-### Why This Matters
+### Rationale
 
-Relying on a single public STUN server (e.g. `stun.l.google.com`) is not enough for real-world deployment:
+Relying on a single public STUN server (e.g. `stun.l.google.com`) is not robust enough in complex real-world network environments:
 
-| Region | Google STUN | TURN relay |
+| Network environment | Google STUN | TURN relay |
 |--------|-------------|------------|
-| Western home broadband | Usually reachable | Not needed (light NAT) |
-| Chinese university campus | Often blocked or throttled | **Required** |
-| Chinese mobile carrier (CGNAT) | May fail intermittently | **Strongly recommended** |
+| Typical home broadband | Usually reachable | Not needed (light NAT) |
+| Restrictive networks (campus/enterprise) | Often blocked or throttled | **Required** |
+| Carrier-grade NAT (CGNAT) | May fail intermittently | **Strongly recommended** |
 | Corporate firewall | Typically blocked | **Required** |
 
-**Common failure mode:** the Google STUN server is blocked or rate-limited in mainland China. ICE gathers no `srflx` candidates and, without TURN, has nothing to connect with — the connection silently fails. Multiple STUN sources + a default TURN relay eliminate this single point of failure.
+**Common failure mode:** the Google STUN server is blocked or rate-limited in restrictive network environments. ICE gathers no `srflx` candidates and, without TURN, the connection may silently fail. Multiple STUN sources + a default TURN relay eliminate this single point of failure.
 
 ### Install Coturn
 
@@ -309,15 +309,6 @@ When a viewer cannot connect:
 3. **No `relay` candidate?** TURN is not configured or not reachable — check server env vars and coturn status
 4. **No `srflx` candidate?** STUN is not reachable — the multi-STUN list in `config.js` provides fallbacks
 5. **`turns:` candidate timeouts?** Verify the cert is from a trusted CA (not self-signed)
-
-**Common pitfalls:**
-
-| Symptom | Likely cause |
-|---------|-------------|
-| ICE shows `connected` but media is black | `49152-65535/udp` not open in firewall or security group |
-| No relay candidate appears | `TURN_HOST` env var not set; coturn not running; firewall blocking 3478 |
-| `turns:` candidate never gathered | Self-signed cert in `turnserver.conf` — browser rejects TLS |
-| Viewer connects from China but fails | Google STUN blocked + no TURN fallback → add TURN env vars |
 
 ## Signaling Server Deployment
 
