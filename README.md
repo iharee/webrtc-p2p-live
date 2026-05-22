@@ -124,25 +124,27 @@ Optional overrides via query string:
 | `port` | auto | Signaling server port (auto-detected from page URL) |
 | `room` | URL path | Room ID (extracted from `/live/<room-name>` on remote access) |
 | `token` | — | Room access token (viewers should include this; broadcasters ignore it) |
-| `turn` | — | TURN server IP (TURN disabled if omitted) |
-| `turnUser` | — | TURN username |
-| `turnPass` | — | TURN password |
+| `turn` | — | TURN server IP (overrides server-injected default; TURN is auto-configured if server env vars are set) |
+| `turnUser` | — | TURN username (override) |
+| `turnPass` | — | TURN password (override) |
 
 ### Examples
 
-Using example IP `203.0.113.1`, room `myroom`, agreed token `saki-lovelive`, TURN password `saki`:
+Using example IP `203.0.113.1`, room `myroom`, agreed token `saki-lovelive`:
 
 ```bash
-# Broadcaster — token is edited or copied on the page
-https://203.0.113.1:8848/live/myroom/?turn=203.0.113.1&turnUser=webrtc&turnPass=saki
+# Broadcaster
+https://203.0.113.1:8848/live/myroom/
 
 # Viewer — token passed via query parameter
-https://203.0.113.1:8848/live/myroom/viewer.html?token=saki-lovelive&turn=203.0.113.1&turnUser=webrtc&turnPass=saki
+https://203.0.113.1:8848/live/myroom/viewer.html?token=saki-lovelive
 
 # Local files (server and room required)
-file:///.../broadcaster.html?server=203.0.113.1&room=myroom&turn=203.0.113.1&turnUser=webrtc&turnPass=saki
-file:///.../viewer.html?server=203.0.113.1&room=myroom&token=saki-lovelive&turn=203.0.113.1&turnUser=webrtc&turnPass=saki
+file:///.../broadcaster.html?server=203.0.113.1&room=myroom
+file:///.../viewer.html?server=203.0.113.1&room=myroom&token=saki-lovelive
 ```
+
+TURN is automatically configured by the server — no query parameters needed. Use `?turn=...` only to override the default with a custom relay.
 
 ## HTTPS & Certificates
 
@@ -173,7 +175,40 @@ npm test
 
 ## TURN Server Deployment
 
-Symmetric NAT environments (e.g. university campus networks) often block direct P2P connections. Consider deploying a TURN relay.
+Direct P2P connections fail when both peers are behind restrictive NAT — common in university campus networks, corporate firewalls, and mobile carrier CGNAT. TURN relay guarantees connectivity by routing media through your server.
+
+**The signaling server automatically injects TURN configuration into client pages** — no URL query parameters needed. Set these environment variables before starting the server:
+
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `TURN_HOST` | `182.92.168.150` | TURN server IP or hostname |
+| `TURN_USER` | `webrtc` | TURN long-term credential username |
+| `TURN_PASS` | `your-password` | TURN long-term credential password |
+
+If `TURN_HOST` is set, the server injects three relay URLs to every client page:
+
+```
+turn:<TURN_HOST>:3478                    # UDP (fastest)
+turn:<TURN_HOST>:3478?transport=tcp      # TCP fallback (harder to block)
+turns:<TURN_HOST>:5349                   # TLS fallback (requires valid cert)
+```
+
+Users just open the page and connect. No manual URL construction, no exposed credentials in the link, no confusion.
+
+For local development or custom TURN servers, `?turn=` / `?turnUser=` / `?turnPass=` query parameters still work as overrides.
+
+### Why This Matters
+
+Relying on a single public STUN server (e.g. `stun.l.google.com`) is not enough for real-world deployment:
+
+| Region | Google STUN | TURN relay |
+|--------|-------------|------------|
+| Western home broadband | Usually reachable | Not needed (light NAT) |
+| Chinese university campus | Often blocked or throttled | **Required** |
+| Chinese mobile carrier (CGNAT) | May fail intermittently | **Strongly recommended** |
+| Corporate firewall | Typically blocked | **Required** |
+
+**Common failure mode:** the Google STUN server is blocked or rate-limited in mainland China. ICE gathers no `srflx` candidates and, without TURN, has nothing to connect with — the connection silently fails. Multiple STUN sources + a default TURN relay eliminate this single point of failure.
 
 ### Install Coturn
 
@@ -181,14 +216,19 @@ Symmetric NAT environments (e.g. university campus networks) often block direct 
 apt-get update && apt-get install -y coturn
 ```
 
-### Configure `/etc/turnserver.conf` (see [example](coturn/turnserver.conf.example))
+### Configure `/etc/turnserver.conf`
 
 ```conf
 listening-port=3478
 tls-listening-port=5349
-listening-ip=<private-ip>    # NIC address, e.g. eth0
-relay-ip=<private-ip>        # Same as above
-external-ip=<public-ip>      # Public IP announced to peers
+listening-ip=<private-ip>        # NIC address (e.g. 172.17.191.160)
+relay-ip=<private-ip>            # Same as listening-ip
+external-ip=<public-ip>          # Public IP announced to peers
+
+# TLS certificate for TURNS (required for tls-listening-port to work)
+cert=/path/to/cert.pem
+pkey=/path/to/key.pem
+
 realm=<public-ip>
 server-name=<public-ip>
 lt-cred-mech
@@ -199,9 +239,32 @@ stale-nonce
 no-loopback-peers
 ```
 
-**Note for cloud VMs:** `listening-ip` (private) and `external-ip` (public) must be set separately.
+See [`coturn/turnserver.conf.example`](coturn/turnserver.conf.example) for a full annotated example.
 
-### Start
+**Important:** `cert=` and `pkey=` are required for `tls-listening-port=5349`. If they are missing, coturn **silently skips** the TLS listener — port 5349 will not listen and `turns:` candidates will never work.
+
+**Cloud VMs:** `listening-ip` (private) and `external-ip` (public) must be set separately.
+
+### TLS Certificates for TURNS
+
+**Self-signed certificates will NOT work for TURNS in browsers.** Chrome, Android WebView, and native WebRTC stacks perform strict TLS validation on TURN connections — the browser's "proceed anyway" exception for the page does NOT extend to the TURN TLS layer.
+
+For production use, put a domain on the server and obtain a real certificate via Let's Encrypt:
+
+```bash
+certbot certonly --standalone -d turn.example.com
+```
+
+Then reference the issued cert in `turnserver.conf`:
+
+```conf
+cert=/etc/letsencrypt/live/turn.example.com/fullchain.pem
+pkey=/etc/letsencrypt/live/turn.example.com/privkey.pem
+```
+
+While waiting for a domain, TCP TURN (`turn:...:3478?transport=tcp`) is the most reliable fallback — it works through most firewalls and does not require TLS.
+
+### Start Coturn
 
 ```bash
 systemctl enable coturn && systemctl start coturn
@@ -221,9 +284,7 @@ ufw allow 5349/tcp && ufw allow 5349/udp
 ufw allow 49152:65535/udp
 ```
 
-**Common pitfall:** omitting `49152-65535/udp` causes ICE to show `connected` but media stays black.
-
-For cloud providers (Alibaba Cloud, AWS, etc.), you must additionally open these ports in the **security group**. UFW rules alone are not sufficient.
+**Cloud providers** (Alibaba Cloud, AWS, etc.): open these ports in the **security group** as well. UFW rules alone are not sufficient.
 
 ### Verify TURN
 
@@ -231,7 +292,32 @@ For cloud providers (Alibaba Cloud, AWS, etc.), you must additionally open these
 turnutils_uclient -t -u webrtc -w <password> -p 3478 <public-ip>
 ```
 
-A `relay` address in the output confirms TURN is working.
+A `relay` address in the output confirms TURN relay is functioning.
+
+If the output shows only `srflx` or `host` but no `relay`, check firewall rules and the coturn log:
+
+```bash
+journalctl -u coturn -f
+```
+
+### ICE Troubleshooting Checklist
+
+When a viewer cannot connect:
+
+1. **Open Browser DevTools → Console.** Look for `ICE servers` log — verify TURN URLs, username, and credential are present
+2. **Check `chrome://webrtc-internals`** (Chrome) or `about:webrtc` (Firefox) — look at the selected candidate pair. If it's `host-host` but the peers are on different networks, ICE is not working
+3. **No `relay` candidate?** TURN is not configured or not reachable — check server env vars and coturn status
+4. **No `srflx` candidate?** STUN is not reachable — the multi-STUN list in `config.js` provides fallbacks
+5. **`turns:` candidate timeouts?** Verify the cert is from a trusted CA (not self-signed)
+
+**Common pitfalls:**
+
+| Symptom | Likely cause |
+|---------|-------------|
+| ICE shows `connected` but media is black | `49152-65535/udp` not open in firewall or security group |
+| No relay candidate appears | `TURN_HOST` env var not set; coturn not running; firewall blocking 3478 |
+| `turns:` candidate never gathered | Self-signed cert in `turnserver.conf` — browser rejects TLS |
+| Viewer connects from China but fails | Google STUN blocked + no TURN fallback → add TURN env vars |
 
 ## Signaling Server Deployment
 
