@@ -185,7 +185,7 @@ npm test
 | `TURN_USER` | `webrtc` | TURN 长期凭据用户名 |
 | `TURN_PASS` | `your-password` | TURN 长期凭据密码 |
 
-设置 `TURN_HOST` 后，服务端会向每个客户端页面注入三级 relay URL：
+设置 `TURN_HOST` 后，服务端会将完整的 ICE 配置（含三级 relay URL、用户名、密码）注入每个客户端页面：
 
 ```
 turn:<TURN_HOST>:3478                    # UDP（最快）
@@ -193,9 +193,16 @@ turn:<TURN_HOST>:3478?transport=tcp      # TCP 回退（更难被阻断）
 turns:<TURN_HOST>:5349                   # TLS 回退（需有效证书）
 ```
 
-用户打开页面即可连接，无需拼接 URL。
+配置完成后，双端 URL 即为最终形式，无需附加任何 TURN 参数：
 
-本地开发或需要使用自定义 TURN 服务器时，仍可通过 `?turn=` / `?turnUser=` / `?turnPass=` 查询参数覆盖。
+```
+https://<服务器IP>:8848/live/<房间名>                   # broadcaster
+https://<服务器IP>:8848/live/<房间名>/viewer.html?token=xxxx  # viewer
+```
+
+凭据（用户名、密码）不出服务器，不暴露在链接、浏览器历史记录或截图中。
+
+本地开发或需临时覆盖默认 relay 时，仍可通过 `?turn=` / `?turnUser=` / `?turnPass=` 查询参数指定。
 
 ### 必要性
 

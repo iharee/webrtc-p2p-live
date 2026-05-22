@@ -185,7 +185,7 @@ Direct P2P connections fail when both peers are behind restrictive NAT — commo
 | `TURN_USER` | `webrtc` | TURN long-term credential username |
 | `TURN_PASS` | `your-password` | TURN long-term credential password |
 
-If `TURN_HOST` is set, the server injects three relay URLs to every client page:
+If `TURN_HOST` is set, the server injects the full ICE configuration (three relay URLs, username, and password) into every client page:
 
 ```
 turn:<TURN_HOST>:3478                    # UDP (fastest)
@@ -193,9 +193,16 @@ turn:<TURN_HOST>:3478?transport=tcp      # TCP fallback (harder to block)
 turns:<TURN_HOST>:5349                   # TLS fallback (requires valid cert)
 ```
 
-Users just open the page and connect — no manual URL construction needed.
+Once configured, the broadcaster and viewer URLs are the final form — no TURN parameters needed:
 
-For local development or custom TURN servers, `?turn=` / `?turnUser=` / `?turnPass=` query parameters still work as overrides.
+```
+https://<server-ip>:8848/live/<room-name>                   # Broadcaster
+https://<server-ip>:8848/live/<room-name>/viewer.html?token=xxxx  # Viewer
+```
+
+Credentials (username, password) never leave the server — not in links, browser history, or screenshots.
+
+For local development or temporary custom relay overrides, `?turn=` / `?turnUser=` / `?turnPass=` query parameters are still available.
 
 ### Rationale
 
