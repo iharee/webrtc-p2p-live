@@ -90,7 +90,7 @@ class Broadcaster {
     this.tokenInput = document.getElementById('tokenInput');
     this.tokenBtn   = document.getElementById('tokenBtn');
     this.tokenBtn.textContent = L.saveBtn;
-    this.tokenInput.value = this.generateToken();
+    this.tokenInput.value = window.CONFIG.token || this.generateToken();
 
     this.tokenBtn.addEventListener('click', () => {
       if (this.state !== STATE.IDLE) {
