@@ -147,6 +147,8 @@ wss.on('connection', (ws, req) => {
       room.broadcaster = null;
       room.viewers.forEach(v => send(v, { type: 'peer-left' }));
       room.pendingViewers.forEach(v => send(v, { type: 'peer-left' }));
+      room.viewers.clear();
+      room.pendingViewers.clear();
     } else if (ws.role === 'viewer') {
       room.viewers.delete(ws);
       room.pendingViewers.delete(ws);
@@ -183,24 +185,12 @@ function handleJoin(ws, msg) {
     }
     room.token = token || generateToken();
     room.broadcaster = ws;
+
+    // Clear stale viewers from previous sessions (e.g. orphaned WebSockets)
+    room.viewers.clear();
+    room.pendingViewers.clear();
+
     send(ws, { type: 'joined', token: room.token });
-
-    // Process pending viewers — first with matching token wins
-    for (const vw of room.pendingViewers) {
-      if (room.viewers.size >= MAX_VIEWERS) break;
-      const vToken = vw._pendingToken;
-      if (vToken && vToken === room.token) {
-        room.pendingViewers.delete(vw);
-        room.viewers.add(vw);
-        send(vw, { type: 'joined' });
-        send(ws, { type: 'viewer-joined' });
-      }
-    }
-
-    // Notify remaining pending viewers that broadcaster is here
-    room.pendingViewers.forEach(vw => {
-      send(vw, { type: 'broadcaster-joined' });
-    });
   } else if (role === 'viewer') {
     ws._pendingToken = token || null;
 
