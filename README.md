@@ -15,6 +15,8 @@ Architecture overview:
 - The viewer page pulls the stream and optionally sends back mic audio;
 - Media data flows over a direct P2P connection between the two peers.
 
+> **Android broadcasters:** Chrome on Android does not expose `getDisplayMedia()`, so the web-based broadcaster cannot capture the screen on Android devices. Use [webrtc-p2p-live-android](https://github.com/iharee/webrtc-p2p-live-android) — a native Android app that replaces the browser capture path with `MediaProjection`, using the same signaling protocol and viewer experience.
+
 ## Quick Start
 
 ```bash

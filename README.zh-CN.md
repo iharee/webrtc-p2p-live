@@ -15,6 +15,8 @@
 - 前端 viewer 拉流并可选回传麦克风音频；
 - 双端通过 P2P 直连传输媒体数据。
 
+> **Android 推流端：**Android 版 Chrome 没有暴露 `getDisplayMedia()` API，因此 web 端 broadcaster 无法在 Android 设备上采集屏幕。请使用 [webrtc-p2p-live-android](https://github.com/iharee/webrtc-p2p-live-android) —— 一个原生的 Android 应用，以 `MediaProjection` 替代浏览器采集，信令协议与 viewer 体验是完全一致的。
+
 ## 快速上手
 
 ```bash
