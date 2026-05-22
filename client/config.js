@@ -12,6 +12,7 @@ const rawToken = p.get('token');
 const token = rawToken && /^[a-z0-9]{1,64}$/i.test(rawToken.trim())
   ? rawToken.trim().toLowerCase()
   : null;
+if (rawToken && !token) console.warn('Invalid token in URL — ignored:', rawToken);
 
 const cfg = {
   server:   p.get('server')   || location.hostname || 'localhost',
