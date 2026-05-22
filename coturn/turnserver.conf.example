@@ -11,3 +11,7 @@ total-quota=100
 bps-capacity=0
 stale-nonce
 no-loopback-peers
+
+# TLS certificate for TURNS (required for tls-listening-port to work)
+#cert=/path/to/cert.pem
+#pkey=/path/to/key.pem

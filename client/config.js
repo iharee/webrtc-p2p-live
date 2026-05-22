@@ -31,8 +31,13 @@ cfg.wsUrl = location.protocol === 'https:'
 
 // Derive ICE server list; include TURN only if configured
 cfg.iceServers = [
-  { urls: 'stun:stun.l.google.com:19302' }
+  { urls: 'stun:stun.miwifi.com:3478' },
+  { urls: 'stun:stun.qq.com:3478' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
 ];
+
+// Server-injected TURN servers — replaced at serve time
+cfg.iceServers = cfg.iceServers.concat(__TURN_SERVERS__);
 if (cfg.turn) {
   cfg.iceServers.push({
     urls: [
@@ -44,5 +49,7 @@ if (cfg.turn) {
     credential: cfg.turnPass,
   });
 }
+
+console.log('ICE servers', cfg.iceServers);
 
 window.CONFIG = cfg;

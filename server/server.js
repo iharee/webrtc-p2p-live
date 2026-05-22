@@ -12,6 +12,22 @@ const MIME = {
 
 const CLIENT_DIR = path.join(__dirname, 'client');
 
+const TURN_HOST = process.env.TURN_HOST || '';
+const TURN_USER = process.env.TURN_USER || 'webrtc';
+const TURN_PASS = process.env.TURN_PASS || '';
+
+const TURN_SERVERS = TURN_HOST ? JSON.stringify([
+  {
+    urls: [
+      `turn:${TURN_HOST}:3478`,
+      `turn:${TURN_HOST}:3478?transport=tcp`,
+      `turns:${TURN_HOST}:5349`
+    ],
+    username: TURN_USER,
+    credential: TURN_PASS
+  }
+]) : '[]';
+
 // Use HTTPS if cert/key exist, otherwise plain HTTP (local dev)
 let isHttps = false;
 let server;
@@ -49,6 +65,23 @@ function handleRequest(req, res) {
   if (!MIME[ext]) {
     res.writeHead(404);
     return res.end('Not Found');
+  }
+
+  // Inject server-side TURN config into config.js at serve time
+  if (urlPath === '/config.js') {
+    fs.readFile(filePath, 'utf8', (err, data) => {
+      if (err) {
+        res.writeHead(404);
+        return res.end('Not Found');
+      }
+      const injected = data.replace('__TURN_SERVERS__', TURN_SERVERS);
+      res.writeHead(200, {
+        'Content-Type': MIME['.js'],
+        'Cache-Control': 'no-store'
+      });
+      res.end(injected);
+    });
+    return;
   }
 
   fs.readFile(filePath, (err, data) => {
@@ -191,11 +224,24 @@ function handleJoin(ws, msg) {
     room.token = token || generateToken();
     room.broadcaster = ws;
 
-    // Clear stale viewers from previous sessions (e.g. orphaned WebSockets)
-    room.viewers.clear();
-    room.pendingViewers.clear();
-
     send(ws, { type: 'joined', token: room.token });
+
+    // Auto-auth pending viewers with matching tokens
+    for (const vw of room.pendingViewers) {
+      if (room.viewers.size >= MAX_VIEWERS) break;
+      const vToken = vw._pendingToken;
+      if (vToken && vToken === room.token) {
+        room.pendingViewers.delete(vw);
+        room.viewers.add(vw);
+        send(vw, { type: 'joined' });
+        send(ws, { type: 'viewer-joined' });
+      }
+    }
+
+    // Notify remaining pending viewers that broadcaster is here
+    room.pendingViewers.forEach(vw => {
+      send(vw, { type: 'broadcaster-joined' });
+    });
   } else if (role === 'viewer') {
     ws._pendingToken = token || null;
 
