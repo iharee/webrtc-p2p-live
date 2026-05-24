@@ -39,13 +39,11 @@ No query parameters needed for local dev — defaults to `localhost:8848`, room 
 The server serves static pages and WebSocket signaling — no local files needed. Rooms are identified by URL path:
 
 ```
-https://<server-ip>:8848/live/<room-name>                   # Broadcaster
-https://<server-ip>:8848/live/<room-name>/viewer.html       # Viewer
+https://<host>/live/<room-name>                   # Broadcaster
+https://<host>/live/<room-name>/viewer.html       # Viewer
 ```
 
-`server` and `port` are auto-detected from the page URL. No manual configuration required.
-
-**Multi-room support:** Different room names (e.g. `/live/alice`, `/live/bob`) are fully isolated. A single server can serve multiple broadcaster-viewer pairs simultaneously.
+**Multi-room support:** Different room names (e.g. `/live/saki`, `/live/ick`) are fully isolated. A single server can serve multiple broadcaster-viewer pairs simultaneously.
 
 ### Method 2: Local Files
 
@@ -75,7 +73,7 @@ The token can be provided in two ways. **Using a query parameter is recommended:
 
 1. **URL query parameter (recommended):**
    ```
-   https://<server-ip>:8848/live/<room-name>/viewer.html?token=xxxx
+   https://<host>/live/<room-name>/viewer.html?token=xxxx
    ```
    Auth is handled automatically — no extra steps needed.
 
@@ -130,18 +128,18 @@ Optional overrides via query string:
 
 ### Examples
 
-Using example IP `203.0.113.1`, room `myroom`, agreed token `saki-lovelive`:
+Using example IP `203.0.113.1`, room `myroom`, agreed token `saki`:
 
-```bash
+```
 # Broadcaster
 https://203.0.113.1:8848/live/myroom/
 
 # Viewer — token passed via query parameter
-https://203.0.113.1:8848/live/myroom/viewer.html?token=saki-lovelive
+https://203.0.113.1:8848/live/myroom/viewer.html?token=saki
 
 # Local files (server and room required)
 file:///.../broadcaster.html?server=203.0.113.1&room=myroom
-file:///.../viewer.html?server=203.0.113.1&room=myroom&token=saki-lovelive
+file:///.../viewer.html?server=203.0.113.1&room=myroom&token=saki
 ```
 
 TURN is automatically configured by the server — no query parameters needed. Use `?turn=...` only to override the default with a custom relay.
@@ -196,8 +194,8 @@ turns:<TURN_HOST>:5349                   # TLS fallback (requires valid cert)
 Once configured, the broadcaster and viewer URLs are the final form — no TURN parameters needed:
 
 ```
-https://<server-ip>:8848/live/<room-name>                   # Broadcaster
-https://<server-ip>:8848/live/<room-name>/viewer.html?token=xxxx  # Viewer
+https://<host>/live/<room-name>                   # Broadcaster
+https://<host>/live/<room-name>/viewer.html?token=xxxx  # Viewer
 ```
 
 Credentials (username, password) never leave the server — not in links, browser history, or screenshots.
