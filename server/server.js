@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const WebSocket = require('ws');
 
 const PORT = process.env.PORT || 8080;
@@ -13,20 +14,8 @@ const MIME = {
 const CLIENT_DIR = path.join(__dirname, 'client');
 
 const TURN_HOST = process.env.TURN_HOST || '';
-const TURN_USER = process.env.TURN_USER || 'webrtc';
-const TURN_PASS = process.env.TURN_PASS || '';
-
-const TURN_SERVERS = TURN_HOST ? JSON.stringify([
-  {
-    urls: [
-      `turn:${TURN_HOST}:3478`,
-      `turn:${TURN_HOST}:3478?transport=tcp`,
-      `turns:${TURN_HOST}:5349`
-    ],
-    username: TURN_USER,
-    credential: TURN_PASS
-  }
-]) : '[]';
+const TURN_SECRET = process.env.TURN_SECRET || '';
+const TURN_CREDENTIAL_TTL = parseInt(process.env.TURN_CREDENTIAL_TTL, 10) || 300;
 
 // Use HTTPS if cert/key exist, otherwise plain HTTP (local dev)
 let isHttps = false;
@@ -67,23 +56,6 @@ function handleRequest(req, res) {
     return res.end('Not Found');
   }
 
-  // Inject server-side TURN config into config.js at serve time
-  if (urlPath === '/config.js') {
-    fs.readFile(filePath, 'utf8', (err, data) => {
-      if (err) {
-        res.writeHead(404);
-        return res.end('Not Found');
-      }
-      const injected = data.replace('__TURN_SERVERS__', TURN_SERVERS);
-      res.writeHead(200, {
-        'Content-Type': MIME['.js'],
-        'Cache-Control': 'no-store'
-      });
-      res.end(injected);
-    });
-    return;
-  }
-
   fs.readFile(filePath, (err, data) => {
     if (err) {
       res.writeHead(404);
@@ -110,6 +82,33 @@ function send(ws, msg) {
 const log = (ip, msg) => console.log(`[${new Date().toISOString()}] [${ip}] ${msg}`);
 
 let iceCount = 0;
+
+const STUN_SERVERS = [
+  { urls: 'stun:stun.miwifi.com:3478' },
+  { urls: 'stun:stun.qq.com:3478' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+];
+
+function generateIceServers(roomId) {
+  const iceServers = [...STUN_SERVERS];
+  if (TURN_HOST && TURN_SECRET) {
+    const expires = Math.floor(Date.now() / 1000) + TURN_CREDENTIAL_TTL;
+    const username = `${expires}:${roomId}`;
+    const credential = crypto
+      .createHmac('sha1', TURN_SECRET)
+      .update(username)
+      .digest('base64');
+    iceServers.push({
+      urls: [
+        `turn:${TURN_HOST}:3478?transport=udp`,
+        `turn:${TURN_HOST}:3478?transport=tcp`,
+      ],
+      username,
+      credential,
+    });
+  }
+  return iceServers;
+}
 
 wss.on('connection', (ws, req) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -241,7 +240,7 @@ function handleJoin(ws, msg) {
     room.broadcaster = ws;
     console.log(`[join] broadcaster joined room=${roomId} token=${room.token}`);
 
-    send(ws, { type: 'joined', token: room.token });
+    send(ws, { type: 'joined', token: room.token, iceServers: generateIceServers(roomId) });
 
     // Auto-auth pending viewers with matching tokens
     for (const vw of room.pendingViewers) {
@@ -250,7 +249,7 @@ function handleJoin(ws, msg) {
       if (vToken && vToken === room.token) {
         room.pendingViewers.delete(vw);
         room.viewers.add(vw);
-        send(vw, { type: 'joined' });
+        send(vw, { type: 'joined', iceServers: generateIceServers(roomId) });
         send(ws, { type: 'viewer-joined' });
       }
     }
@@ -270,7 +269,7 @@ function handleJoin(ws, msg) {
           return;
         }
         room.viewers.add(ws);
-        send(ws, { type: 'joined' });
+        send(ws, { type: 'joined', iceServers: generateIceServers(roomId) });
         send(room.broadcaster, { type: 'viewer-joined' });
       } else if (ws._pendingToken && ws._pendingToken !== room.token) {
         send(ws, { type: 'rejected', reason: 'bad-token' });
@@ -281,7 +280,7 @@ function handleJoin(ws, msg) {
       }
     } else {
       room.pendingViewers.add(ws);
-      send(ws, { type: 'joined' });
+      send(ws, { type: 'joined', iceServers: generateIceServers(roomId) });
     }
   }
 }
@@ -322,7 +321,7 @@ function handleAuth(ws, token) {
     room.pendingViewers.delete(ws);
     room.viewers.add(ws);
     console.log(`[auth] viewer authenticated room=${ws.roomId} viewers=${room.viewers.size}`);
-    send(ws, { type: 'joined' });
+    send(ws, { type: 'joined', iceServers: generateIceServers(ws.roomId) });
     if (room.broadcaster) {
       send(room.broadcaster, { type: 'viewer-joined' });
     }

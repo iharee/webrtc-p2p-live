@@ -64,6 +64,8 @@ class Viewer {
     this.pc = null;
     this.pendingCandidates = [];
     this.micStream = null;
+    this.iceServers = null;
+    this._connectionStarted = false;
     this._modalOverlay = null;
 
     this.statusEl   = document.getElementById('status');
@@ -185,51 +187,16 @@ class Viewer {
     this.setState(STATE.WAITING_STREAM);
     this.qualityBar.style.display = 'flex';
 
-    try {
-      this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (err) {
-      console.warn(L.micDenied + ':', err.message);
-      showToast(L.micDenied, 'warning');
-      this.micStream = null;
-    }
-
-    this.pc = new RTCPeerConnection({ iceServers: window.CONFIG.iceServers });
-    this.pc.addTransceiver('video', { direction: 'recvonly' });
-    this.pc.addTransceiver('audio', { direction: 'sendrecv' });
-
-    this.pc.ontrack = (e) => {
-      if (!e.streams || !e.streams[0]) return;
-      if (e.track.kind === 'video') {
-        this.remoteVideo.srcObject = e.streams[0];
-      } else if (e.track.kind === 'audio' && !e.streams[0].getVideoTracks().length) {
-        var remoteAudio = document.getElementById('remoteAudio');
-        if (remoteAudio) remoteAudio.srcObject = e.streams[0];
-      }
-    };
-
-    this.pc.onicecandidate = (e) => {
-      if (e.candidate) this.signaling.sendIceCandidate(e.candidate);
-    };
-
-    this.pc.onconnectionstatechange = () => {
-      if (this.pc.connectionState === 'connected') {
-        this.setState(STATE.STREAMING);
-      } else if (this.pc.connectionState === 'failed' || this.pc.connectionState === 'disconnected') {
-        showToast(L.connectionLost, 'error');
-        this.reset();
-      }
-    };
-
-    if (this.micStream) {
-      this.micStream.getTracks().forEach(function (track) {
-        this.pc.addTrack(track, this.micStream);
-      }, this);
-    }
-
     var self = this;
     this.signaling = new SignalingClient(window.CONFIG.wsUrl);
     this.signaling.addEventListener('open', function () {
       self.signaling.join('viewer', window.CONFIG.roomId, window.CONFIG.token);
+    });
+    this.signaling.addEventListener('joined', function (e) {
+      if (e.detail && e.detail.iceServers) {
+        self.iceServers = e.detail.iceServers;
+      }
+      self.startConnection();
     });
     this.signaling.addEventListener('offer', function (e) { self.onOffer(e.detail); });
     this.signaling.addEventListener('ice-candidate', function (e) { self.onIceCandidate(e.detail); });
@@ -264,6 +231,53 @@ class Viewer {
         showToast(L.roomFull, 'error');
       }
     });
+  }
+
+  async startConnection() {
+    if (this._connectionStarted) return;
+    this._connectionStarted = true;
+
+    try {
+      this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      console.warn(L.micDenied + ':', err.message);
+      showToast(L.micDenied, 'warning');
+      this.micStream = null;
+    }
+
+    this.pc = new RTCPeerConnection({ iceServers: this.iceServers || [] });
+    this.pc.addTransceiver('video', { direction: 'recvonly' });
+    this.pc.addTransceiver('audio', { direction: 'sendrecv' });
+
+    var self = this;
+    this.pc.ontrack = (e) => {
+      if (!e.streams || !e.streams[0]) return;
+      if (e.track.kind === 'video') {
+        self.remoteVideo.srcObject = e.streams[0];
+      } else if (e.track.kind === 'audio' && !e.streams[0].getVideoTracks().length) {
+        var remoteAudio = document.getElementById('remoteAudio');
+        if (remoteAudio) remoteAudio.srcObject = e.streams[0];
+      }
+    };
+
+    this.pc.onicecandidate = (e) => {
+      if (e.candidate) self.signaling.sendIceCandidate(e.candidate);
+    };
+
+    this.pc.onconnectionstatechange = () => {
+      if (self.pc.connectionState === 'connected') {
+        self.setState(STATE.STREAMING);
+      } else if (self.pc.connectionState === 'failed' || self.pc.connectionState === 'disconnected') {
+        showToast(L.connectionLost, 'error');
+        self.reset();
+      }
+    };
+
+    if (this.micStream) {
+      this.micStream.getTracks().forEach(function (track) {
+        self.pc.addTrack(track, self.micStream);
+      });
+    }
   }
 
   async onOffer(_ref) {
@@ -308,6 +322,8 @@ class Viewer {
     this.remoteVideo.srcObject = null;
     if (this.micStream) { this.micStream.getTracks().forEach(function (t) { t.stop(); }); this.micStream = null; }
     this.pendingCandidates = [];
+    this.iceServers = null;
+    this._connectionStarted = false;
     this.hideModal();
     this.setState(STATE.IDLE);
     this.joinBtn.disabled = false;

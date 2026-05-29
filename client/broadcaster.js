@@ -76,6 +76,7 @@ class Broadcaster {
     this.captureWidth = null;
     this.captureHeight = null;
     this.baselineBitrate = null;
+    this.iceServers = null;
 
     this.statusEl   = document.getElementById('status');
     this.localVideo = document.getElementById('localVideo');
@@ -214,6 +215,9 @@ class Broadcaster {
         if (serverToken && serverToken !== this.tokenInput.value) {
           this.tokenInput.value = serverToken;
         }
+        if (e.detail && e.detail.iceServers) {
+          this.iceServers = e.detail.iceServers;
+        }
         this.setState(STATE.WAITING_VIEWER);
         this.showTokenModal(serverToken || this.tokenInput.value);
       });
@@ -250,7 +254,7 @@ class Broadcaster {
 
   async onViewerJoined() {
     if (this.pc) { this.pc.close(); }
-    this.pc = new RTCPeerConnection({ iceServers: window.CONFIG.iceServers });
+    this.pc = new RTCPeerConnection({ iceServers: this.iceServers || [] });
 
     this.localStream.getTracks().forEach(track => {
       this.pc.addTrack(track, this.localStream);

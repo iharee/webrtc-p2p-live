@@ -17,9 +17,6 @@ if (rawToken && !token) console.warn('Invalid token in URL — ignored:', rawTok
 const cfg = {
   server:   p.get('server')   || location.hostname || 'localhost',
   port:     p.get('port')     || location.port     || '8848',
-  turn:     p.get('turn')     || null,
-  turnUser: p.get('turnUser') || null,
-  turnPass: p.get('turnPass') || null,
   roomId:   roomId,
   token:    token,
 };
@@ -28,28 +25,5 @@ const cfg = {
 cfg.wsUrl = location.protocol === 'https:'
   ? `wss://${cfg.server}:${cfg.port}`
   : `ws://${cfg.server}:${cfg.port}`;
-
-// Derive ICE server list; include TURN only if configured
-cfg.iceServers = [
-  { urls: 'stun:stun.miwifi.com:3478' },
-  { urls: 'stun:stun.qq.com:3478' },
-  { urls: 'stun:stun.cloudflare.com:3478' },
-];
-
-// Server-injected TURN servers — replaced at serve time
-cfg.iceServers = cfg.iceServers.concat(__TURN_SERVERS__);
-if (cfg.turn) {
-  cfg.iceServers.push({
-    urls: [
-      `turn:${cfg.turn}:3478`,                    // UDP (fastest)
-      `turn:${cfg.turn}:3478?transport=tcp`,      // TCP fallback
-      `turns:${cfg.turn}:5349`,                   // TLS fallback (hardest to block)
-    ],
-    username:   cfg.turnUser,
-    credential: cfg.turnPass,
-  });
-}
-
-console.log('ICE servers', cfg.iceServers);
 
 window.CONFIG = cfg;

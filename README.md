@@ -122,9 +122,6 @@ Optional overrides via query string:
 | `port` | auto | Signaling server port (auto-detected from page URL) |
 | `room` | URL path | Room ID (extracted from `/live/<room-name>` on remote access) |
 | `token` | — | Room access token (viewers should include this; broadcasters ignore it) |
-| `turn` | — | TURN server IP (overrides server-injected default; TURN is auto-configured if server env vars are set) |
-| `turnUser` | — | TURN username (override) |
-| `turnPass` | — | TURN password (override) |
 
 ### Examples
 
@@ -142,7 +139,7 @@ file:///.../broadcaster.html?server=203.0.113.1&room=myroom
 file:///.../viewer.html?server=203.0.113.1&room=myroom&token=saki
 ```
 
-TURN is automatically configured by the server — no query parameters needed. Use `?turn=...` only to override the default with a custom relay.
+TURN credentials are delivered dynamically by the signaling server after room join — no query parameters needed.
 
 ## HTTPS & Certificates
 
@@ -175,20 +172,34 @@ npm test
 
 Direct P2P connections fail when both peers are behind restrictive NAT — common in university campus networks, corporate firewalls, and mobile carrier CGNAT. TURN relay guarantees connectivity by routing media through your server.
 
-**The signaling server automatically injects TURN configuration into client pages** — no URL query parameters needed. Set these environment variables before starting the server:
+**TURN credentials are delivered via WebSocket after room join** — never exposed in static files or URLs. Set these environment variables before starting the server:
 
 | Variable | Example | Description |
 |----------|---------|-------------|
-| `TURN_HOST` | `182.92.168.150` | TURN server IP or hostname |
-| `TURN_USER` | `webrtc` | TURN long-term credential username |
-| `TURN_PASS` | `your-password` | TURN long-term credential password |
+| `TURN_HOST` | `47.113.225.81` | TURN server IP or hostname |
+| `TURN_SECRET` | `your-secret-here` | Shared secret for HMAC credential generation (must match coturn `static-auth-secret`) |
+| `TURN_CREDENTIAL_TTL` | `300` | Credential lifetime in seconds (default: 300 = 5 minutes) |
 
-If `TURN_HOST` is set, the server injects the full ICE configuration (three relay URLs, username, and password) into every client page:
+If `TURN_HOST` and `TURN_SECRET` are both set, the signaling server generates temporary HMAC-SHA1 credentials per room and delivers them inside the `joined` WebSocket message. Each credential is valid for `TURN_CREDENTIAL_TTL` seconds.
 
-```
-turn:<TURN_HOST>:3478                    # UDP (fastest)
-turn:<TURN_HOST>:3478?transport=tcp      # TCP fallback (harder to block)
-turns:<TURN_HOST>:5349                   # TLS fallback (requires valid cert)
+ICE configuration delivered to authenticated peers:
+
+```json
+{
+  "iceServers": [
+    { "urls": "stun:stun.miwifi.com:3478" },
+    { "urls": "stun:stun.qq.com:3478" },
+    { "urls": "stun:stun.cloudflare.com:3478" },
+    {
+      "urls": [
+        "turn:<TURN_HOST>:3478?transport=udp",
+        "turn:<TURN_HOST>:3478?transport=tcp"
+      ],
+      "username": "<expiry-timestamp>:<roomId>",
+      "credential": "<hmac-sha1-base64>"
+    }
+  ]
+}
 ```
 
 Once configured, the broadcaster and viewer URLs are the final form — no TURN parameters needed:
@@ -197,10 +208,6 @@ Once configured, the broadcaster and viewer URLs are the final form — no TURN 
 https://<host>/live/<room-name>                   # Broadcaster
 https://<host>/live/<room-name>/viewer.html?token=xxxx  # Viewer
 ```
-
-Credentials (username, password) never leave the server — not in links, browser history, or screenshots.
-
-For local development or temporary custom relay overrides, `?turn=` / `?turnUser=` / `?turnPass=` query parameters are still available.
 
 ### Rationale
 
@@ -236,13 +243,15 @@ pkey=/path/to/key.pem
 
 realm=<public-ip>
 server-name=<public-ip>
-lt-cred-mech
-user=webrtc:<your-password>
+use-auth-secret
+static-auth-secret=<your-secret-here>
 total-quota=100
 bps-capacity=0
 stale-nonce
 no-loopback-peers
 ```
+
+> **Important:** `static-auth-secret` must match the `TURN_SECRET` environment variable on the signaling server. The signaling server generates temporary HMAC-SHA1 credentials using this shared secret — coturn validates them against the same secret.
 
 See [`coturn/turnserver.conf.example`](coturn/turnserver.conf.example) for a full annotated example.
 
@@ -293,8 +302,14 @@ ufw allow 49152:65535/udp
 
 ### Verify TURN
 
+Generate a test credential (replace `<secret>` with your `static-auth-secret`):
+
 ```bash
-turnutils_uclient -t -u webrtc -w <password> -p 3478 <public-ip>
+SECRET="<secret>"
+EXPIRES=$(( $(date +%s) + 300 ))
+USERNAME="${EXPIRES}:test"
+PASSWORD=$(echo -n "$USERNAME" | openssl dgst -sha1 -hmac "$SECRET" | awk '{print $NF}')
+turnutils_uclient -t -u "$USERNAME" -w "$PASSWORD" -p 3478 <public-ip>
 ```
 
 A `relay` address in the output confirms TURN relay is functioning.
@@ -309,10 +324,10 @@ journalctl -u coturn -f
 
 When a viewer cannot connect:
 
-1. **Open Browser DevTools → Console.** Look for `ICE servers` log — verify TURN URLs, username, and credential are present
+1. **Open Browser DevTools → Network → WS tab.** Inspect the `joined` message — verify `iceServers` contains TURN URLs, username, and credential
 2. **Check `chrome://webrtc-internals`** (Chrome) or `about:webrtc` (Firefox) — look at the selected candidate pair. If it's `host-host` but the peers are on different networks, ICE is not working
 3. **No `relay` candidate?** TURN is not configured or not reachable — check server env vars and coturn status
-4. **No `srflx` candidate?** STUN is not reachable — the multi-STUN list in `config.js` provides fallbacks
+4. **No `srflx` candidate?** STUN is not reachable — multiple STUN servers are delivered via signaling as fallbacks
 5. **`turns:` candidate timeouts?** Verify the cert is from a trusted CA (not self-signed)
 
 ## Signaling Server Deployment
@@ -352,6 +367,9 @@ ExecStart=/usr/bin/node /root/webrtc-server/server.js
 Restart=always
 RestartSec=5
 Environment=PORT=8848
+Environment=TURN_HOST=47.113.225.81
+Environment=TURN_SECRET=your-secret-here
+Environment=TURN_CREDENTIAL_TTL=300
 
 [Install]
 WantedBy=multi-user.target

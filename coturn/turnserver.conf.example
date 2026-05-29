@@ -5,8 +5,8 @@ relay-ip=YOUR_SERVER_IP
 external-ip=YOUR_SERVER_IP
 realm=your-domain.com
 server-name=your-domain.com
-lt-cred-mech
-user=webrtc:YOUR_TURN_PASSWORD
+use-auth-secret
+static-auth-secret=YOUR_SECRET_HERE
 total-quota=100
 bps-capacity=0
 stale-nonce
