@@ -1,17 +1,41 @@
+# === Required: network identity ===
+# The NIC private IP (NOT Docker bridge IP like 172.18.x.x).
+# On cloud VMs without this, coturn may bind to wrong interfaces
+# (Docker bridge, loopback) and relay allocations fail with 403.
+listening-ip=<private-ip>
+relay-ip=<private-ip>              # Same as listening-ip
+
+# The public IP announced to peers in relay candidates.
+# On cloud VMs this is DIFFERENT from the NIC IP (NAT).
+# REQUIRED — without it, TURN relay candidates carry private IPs
+# and browsers cannot route media through the relay.
+external-ip=<public-ip>
+
+# === Required: Auth realm ===
+# STUN long-term credential auth requires realm.
+# Without it, all TURN allocations fail with 401 (realm/user are empty).
+realm=<public-ip-or-domain>
+server-name=<public-ip-or-domain>
+
+# === Required: port & auth ===
 listening-port=3478
 tls-listening-port=5349
-listening-ip=YOUR_SERVER_IP
-relay-ip=YOUR_SERVER_IP
-external-ip=YOUR_SERVER_IP
-realm=your-domain.com
-server-name=your-domain.com
+
 use-auth-secret
-static-auth-secret=YOUR_SECRET_HERE
+# Must match TURN_SECRET env var on the signaling server.
+# The server generates HMAC-SHA1(username) credentials valid for
+# TURN_CREDENTIAL_TTL seconds (default 300).
+static-auth-secret=<your-secret-here>
+
+# === Optional: quotas & hardening ===
 total-quota=100
 bps-capacity=0
 stale-nonce
 no-loopback-peers
 
-# TLS certificate for TURNS (required for tls-listening-port to work)
+# === TLS certificate for TURNS ===
+# Required for tls-listening-port to work.
+# If missing, coturn SILENTLY skips the TLS listener —
+# port 5349 won't listen, turs: candidates never work.
 #cert=/path/to/cert.pem
 #pkey=/path/to/key.pem

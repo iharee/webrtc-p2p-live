@@ -231,31 +231,47 @@ apt-get update && apt-get install -y coturn
 ### Configure `/etc/turnserver.conf`
 
 ```conf
+# === Required: network identity ===
+# The NIC private IP (NOT Docker bridge IP like 172.18.x.x).
+# On cloud VMs without this, coturn may bind to wrong interfaces
+# (Docker bridge, loopback) and relay allocations fail with 403.
+listening-ip=<private-ip>          # e.g. 172.17.191.160
+relay-ip=<private-ip>              # Same as listening-ip
+
+# The public IP announced to peers in relay candidates.
+# On cloud VMs this is DIFFERENT from the NIC IP (NAT).
+# REQUIRED — without it, TURN relay candidates carry private IPs
+# and browsers cannot route media through the relay.
+external-ip=<public-ip>            # e.g. 47.113.225.81
+
+# === Required: auth realm ===
+# STUN long-term credential auth requires realm.
+# Without it, all TURN allocations fail with 401 (realm/user are empty).
+realm=<public-ip-or-domain>
+server-name=<public-ip-or-domain>
+
+# === Required: port & auth ===
 listening-port=3478
 tls-listening-port=5349
-listening-ip=<private-ip>        # NIC address (e.g. 172.17.191.160)
-relay-ip=<private-ip>            # Same as listening-ip
-external-ip=<public-ip>          # Public IP announced to peers
 
-# TLS certificate for TURNS (required for tls-listening-port to work)
-cert=/path/to/cert.pem
-pkey=/path/to/key.pem
-
-realm=<public-ip>
-server-name=<public-ip>
 use-auth-secret
+# Must match TURN_SECRET env var on the signaling server.
+# The server generates HMAC-SHA1(username) credentials valid for
+# TURN_CREDENTIAL_TTL seconds (default 300).
 static-auth-secret=<your-secret-here>
+
+# === Optional: quotas & hardening ===
 total-quota=100
 bps-capacity=0
 stale-nonce
 no-loopback-peers
+
+# TLS certificate for TURNS (required for tls-listening-port to work)
+#cert=/path/to/cert.pem
+#pkey=/path/to/key.pem
 ```
 
-> **Important:** `static-auth-secret` must match the `TURN_SECRET` environment variable on the signaling server. The signaling server generates temporary HMAC-SHA1 credentials using this shared secret — coturn validates them against the same secret.
-
-See [`coturn/turnserver.conf.example`](coturn/turnserver.conf.example) for a full annotated example.
-
-**Important:** `cert=` and `pkey=` are required for `tls-listening-port=5349`. If they are missing, coturn **silently skips** the TLS listener — port 5349 will not listen and `turns:` candidates will never work.
+> **Important:** `cert=` and `pkey=` are required for `tls-listening-port=5349`. If they are missing, coturn **silently skips** the TLS listener — port 5349 will not listen and `turns:` candidates will never work.
 
 **Cloud VMs:** `listening-ip` (private) and `external-ip` (public) must be set separately.
 

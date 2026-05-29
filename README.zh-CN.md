@@ -231,31 +231,46 @@ apt-get update && apt-get install -y coturn
 ### 配置 `/etc/turnserver.conf`
 
 ```conf
+# === 必填：网络身份 ===
+# 本机网卡内网 IP（注意不是 Docker bridge 的 172.18.x.x）。
+# 云服务器若不指定，coturn 可能绑定到错误的接口（如 Docker bridge、
+# loopback），导致 relay 分配失败 403。
+listening-ip=<内网IP>              # 例如 172.17.191.160
+relay-ip=<内网IP>                  # 同上
+
+# relay candidate 中对外广播的公网 IP。
+# 云服务器上此 IP 与网卡 IP 不同（经过 NAT）。
+# 必填 — 不填的话 relay candidate 携带的是内网 IP，浏览器无法路由。
+external-ip=<公网IP>               # 例如 47.113.225.81
+
+# === 必填：认证域 ===
+# STUN 长凭据认证需要 realm。
+# 不填会导致所有 TURN 分配以 401 失败（realm/user 为空）。
+realm=<公网IP或域名>
+server-name=<公网IP或域名>
+
+# === 必填：端口与认证 ===
 listening-port=3478
 tls-listening-port=5349
-listening-ip=<内网IP>           # 本机网卡 IP（如 172.17.191.160）
-relay-ip=<内网IP>               # 同上
-external-ip=<公网IP>            # 对外广播的公网 IP
 
-# TURNS TLS 证书（tls-listening-port 需要此配置才能生效）
-cert=/path/to/cert.pem
-pkey=/path/to/key.pem
-
-realm=<公网IP>
-server-name=<公网IP>
 use-auth-secret
+# 必须与信令服务器的 TURN_SECRET 环境变量一致。
+# 信令服务器生成 HMAC-SHA1(username) 临时凭据，
+# 有效期为 TURN_CREDENTIAL_TTL 秒（默认 300）。
 static-auth-secret=<你的密钥>
+
+# === 可选：配额与加固 ===
 total-quota=100
 bps-capacity=0
 stale-nonce
 no-loopback-peers
+
+# TURNS TLS 证书（tls-listening-port 需要此配置才能生效）
+#cert=/path/to/cert.pem
+#pkey=/path/to/key.pem
 ```
 
-> **重要：**`static-auth-secret` 必须与信令服务器的 `TURN_SECRET` 环境变量一致。信令服务器使用此共享密钥生成临时 HMAC-SHA1 凭据，coturn 用相同密钥验证。
-
-完整注释版示例见 [`coturn/turnserver.conf.example`](coturn/turnserver.conf.example)。
-
-**注意：**`cert=` 和 `pkey=` 是 `tls-listening-port=5349` 的必需项。如果缺失，coturn **不会报错但 silent 跳过** TLS 监听 —— 端口 5349 将不会监听，`turns:` candidate 永远不可用。
+> **注意：**`cert=` 和 `pkey=` 是 `tls-listening-port=5349` 的必需项。如果缺失，coturn **不会报错但 silent 跳过** TLS 监听 —— 端口 5349 将不会监听，`turns:` candidate 永远不可用。
 
 **云服务器需区分 `listening-ip`（内网）和 `external-ip`（公网）。**
 
