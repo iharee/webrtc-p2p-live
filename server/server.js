@@ -109,6 +109,8 @@ function send(ws, msg) {
 
 const log = (ip, msg) => console.log(`[${new Date().toISOString()}] [${ip}] ${msg}`);
 
+let iceCount = 0;
+
 wss.on('connection', (ws, req) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   log(ip, 'connected');
@@ -138,13 +140,21 @@ wss.on('connection', (ws, req) => {
       case 'offer':
         if (ws.role === 'broadcaster') {
           const room = rooms.get(ws.roomId);
-          if (room) room.viewers.forEach(v => send(v, msg));
+          if (room) {
+            const sdpLen = msg.sdp ? msg.sdp.length : 0;
+            console.log(`[sdp] offer (${sdpLen}B) → ${room.viewers.size} viewers in room=${ws.roomId}`);
+            room.viewers.forEach(v => send(v, msg));
+          }
         }
         break;
       case 'answer':
         if (ws.role === 'viewer') {
           const room = rooms.get(ws.roomId);
-          if (room && room.broadcaster) send(room.broadcaster, msg);
+          if (room && room.broadcaster) {
+            const sdpLen = msg.sdp ? msg.sdp.length : 0;
+            console.log(`[sdp] answer (${sdpLen}B) → broadcaster in room=${ws.roomId}`);
+            send(room.broadcaster, msg);
+          }
         }
         break;
       case 'quality-change':
@@ -157,10 +167,14 @@ wss.on('connection', (ws, req) => {
         {
           const room = rooms.get(ws.roomId);
           if (!room) break;
+          iceCount++;
           if (ws.role === 'broadcaster') {
             room.viewers.forEach(v => send(v, msg));
           } else if (ws.role === 'viewer' && room.broadcaster) {
             send(room.broadcaster, msg);
+          }
+          if (iceCount % 10 === 0) {
+            console.log(`[ice] ${iceCount} candidates forwarded so far`);
           }
         }
         break;
@@ -190,6 +204,7 @@ wss.on('connection', (ws, req) => {
 
     // Clean up room if empty
     if (!room.broadcaster && room.viewers.size === 0 && room.pendingViewers.size === 0) {
+      console.log(`[room] ${ws.roomId} deleted (empty)`);
       rooms.delete(ws.roomId);
     }
   });
@@ -211,6 +226,7 @@ function handleJoin(ws, msg) {
   if (!room) {
     room = { token: null, broadcaster: null, viewers: new Set(), pendingViewers: new Set() };
     rooms.set(roomId, room);
+    console.log(`[room] ${roomId} created`);
   }
 
   ws.roomId = roomId;
@@ -223,6 +239,7 @@ function handleJoin(ws, msg) {
     }
     room.token = token || generateToken();
     room.broadcaster = ws;
+    console.log(`[join] broadcaster joined room=${roomId} token=${room.token}`);
 
     send(ws, { type: 'joined', token: room.token });
 
@@ -244,6 +261,7 @@ function handleJoin(ws, msg) {
     });
   } else if (role === 'viewer') {
     ws._pendingToken = token || null;
+    console.log(`[join] viewer joined room=${roomId} hasToken=${!!ws._pendingToken}`);
 
     if (room.broadcaster && room.token) {
       if (ws._pendingToken === room.token) {
@@ -303,11 +321,13 @@ function handleAuth(ws, token) {
     }
     room.pendingViewers.delete(ws);
     room.viewers.add(ws);
+    console.log(`[auth] viewer authenticated room=${ws.roomId} viewers=${room.viewers.size}`);
     send(ws, { type: 'joined' });
     if (room.broadcaster) {
       send(room.broadcaster, { type: 'viewer-joined' });
     }
   } else {
+    console.log(`[auth] viewer rejected (bad token) room=${ws.roomId}`);
     send(ws, { type: 'rejected', reason: 'bad-token' });
   }
 }

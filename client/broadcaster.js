@@ -274,10 +274,14 @@ class Broadcaster {
     };
 
     this.pc.onconnectionstatechange = () => {
+      if (!this.pc) return;
       if (this.pc.connectionState === 'connected') {
         this.setState(STATE.STREAMING);
       } else if (this.pc.connectionState === 'failed' || this.pc.connectionState === 'disconnected') {
-        this.reset();
+        showToast(L.connectionLost, 'warning');
+        if (this.pc) { this.pc.close(); this.pc = null; }
+        this.pendingCandidates = [];
+        this.setState(STATE.WAITING_VIEWER);
       }
     };
 
